@@ -44,13 +44,21 @@ export async function fetchTopCryptos(
       "usdp",
       "ust",
     ];
-    const stablecoinData = data.filter((coin: any) =>
+    type CoinApiResponse = {
+      id: string;
+      symbol: string;
+      name: string;
+      market_cap: number;
+      price_change_percentage_24h?: number;
+      total_volume: number;
+    };
+    const stablecoinData = (data as CoinApiResponse[]).filter((coin) =>
       stablecoins.includes(coin.symbol.toLowerCase())
     );
 
     // Include non-stablecoins to reach the limit
-    const nonStablecoins = data
-      .filter((coin: any) => !stablecoins.includes(coin.symbol.toLowerCase()))
+    const nonStablecoins = (data as CoinApiResponse[])
+      .filter((coin) => !stablecoins.includes(coin.symbol.toLowerCase()))
       .slice(0, limit - stablecoinData.length);
 
     // Combine both arrays
@@ -61,7 +69,7 @@ export async function fetchTopCryptos(
     const forexPairs = createMockForexPairs();
 
     // Transform API data to match your CryptoBubbleData structure
-    const transformedData = combinedData.map((coin: any) => ({
+    const transformedData = (combinedData as CoinApiResponse[]).map((coin) => ({
       id: coin.id,
       symbol: coin.symbol.toUpperCase(),
       name: coin.name,
@@ -70,7 +78,7 @@ export async function fetchTopCryptos(
       volume24h: coin.total_volume,
       category: determineRealCoinCategory(coin.symbol),
       color: getCoinColor(determineRealCoinCategory(coin.symbol)),
-      size: determineSize(coin.market_cap, data[0].market_cap),
+      size: determineSize(coin.market_cap, (data as CoinApiResponse[])[0].market_cap),
     }));
 
     // Combine real data with mock forex pairs
@@ -93,7 +101,7 @@ function createMockForexPairs(): CryptoBubbleData[] {
       marketCap: 25000000,
       priceChange24h: 0.25,
       volume24h: 3200000,
-      category: "forex-pair" as "forex-pair",
+             category: "forex-pair" as 'forex-pair',
       color: "#8b5cf6",
       size: 55,
     },
@@ -104,7 +112,7 @@ function createMockForexPairs(): CryptoBubbleData[] {
       marketCap: 15000000,
       priceChange24h: -0.32,
       volume24h: 1800000,
-      category: "forex-pair" as "forex-pair",
+             category: "forex-pair" as 'forex-pair',
       color: "#8b5cf6",
       size: 38,
     },
@@ -115,7 +123,7 @@ function createMockForexPairs(): CryptoBubbleData[] {
       marketCap: 22000000,
       priceChange24h: 0.18,
       volume24h: 2800000,
-      category: "forex-pair" as "forex-pair",
+             category: "forex-pair" as 'forex-pair',
       color: "#8b5cf6",
       size: 50,
     },
@@ -126,7 +134,7 @@ function createMockForexPairs(): CryptoBubbleData[] {
       marketCap: 18000000,
       priceChange24h: -0.15,
       volume24h: 2100000,
-      category: "forex-pair" as "forex-pair",
+             category: "forex-pair" as 'forex-pair',
       color: "#8b5cf6",
       size: 42,
     },

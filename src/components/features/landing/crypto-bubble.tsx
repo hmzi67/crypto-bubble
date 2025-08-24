@@ -47,13 +47,22 @@ const CryptoBubblesUI: React.FC = () => {
 
                 // Map API shape to CryptoCoin
                 // Assuming your API returns price field or else default 0
-                const mappedData: CryptoCoin[] = liveData.map((coin) => ({
+                // Define the expected API coin type
+                type ApiCoin = {
+                    id: string;
+                    symbol: string;
+                    name: string;
+                    priceChange24h: number;
+                    marketCap: number;
+                    price?: number;
+                };
+                const mappedData: CryptoCoin[] = (liveData as ApiCoin[]).map((coin) => ({
                     id: coin.id,
                     symbol: coin.symbol,
                     name: coin.name,
                     change24h: coin.priceChange24h,
                     marketCap: coin.marketCap,
-                    price: (coin as any).price ?? 0, // Adapt if API includes price
+                    price: coin.price ?? 0,
                 }));
 
                 // Search filtering
@@ -64,8 +73,12 @@ const CryptoBubblesUI: React.FC = () => {
                 );
 
                 setCryptoData(filtered);
-            } catch (err: any) {
-                setError(err.message || "Failed to load data");
+            } catch (err) {
+                if (err instanceof Error) {
+                    setError(err.message || "Failed to load data");
+                } else {
+                    setError("Failed to load data");
+                }
             } finally {
                 setLoading(false);
             }
@@ -301,15 +314,15 @@ const CryptoBubblesUI: React.FC = () => {
 
         const drag = d3
             .drag<SVGGElement, CryptoCoin>()
-            .on("start", (event, d) => {
+            .on("start", (event: d3.D3DragEvent<SVGGElement, CryptoCoin, unknown>, d: CryptoCoin) => {
                 if (!event.active && simulationRef.current) {
                     simulationRef.current.alphaTarget(0.3).restart();
                 }
                 d.fx = d.x;
                 d.fy = d.y;
-                d3.select(event.sourceEvent.target.parentNode as SVGGElement).style("cursor", "grabbing");
+                d3.select((event.sourceEvent.target as Element).parentNode as SVGGElement).style("cursor", "grabbing");
 
-                d3.select(event.sourceEvent.target.parentNode as SVGGElement)
+                d3.select((event.sourceEvent.target as Element).parentNode as SVGGElement)
                     .select(".glass-bubble")
                     .transition()
                     .duration(150)
@@ -317,22 +330,22 @@ const CryptoBubblesUI: React.FC = () => {
                     .style("opacity", 1)
                     .attr("stroke-width", 4);
             })
-            .on("drag", (event, d) => {
+            .on("drag", (event: d3.D3DragEvent<SVGGElement, CryptoCoin, unknown>, d: CryptoCoin) => {
                 d.fx = event.x;
                 d.fy = event.y;
 
-                d3.select(event.sourceEvent.target.parentNode as SVGGElement).select(".outer-glow").style("opacity", 0.6).attr("r", d.radius! + 15);
+                d3.select((event.sourceEvent.target as Element).parentNode as SVGGElement).select(".outer-glow").style("opacity", 0.6).attr("r", d.radius! + 15);
             })
-            .on("end", (event, d) => {
+            .on("end", (event: d3.D3DragEvent<SVGGElement, CryptoCoin, unknown>, d: CryptoCoin) => {
                 if (!event.active && simulationRef.current) {
                     simulationRef.current.alphaTarget(0);
                 }
                 d.fx = null;
                 d.fy = null;
 
-                d3.select(event.sourceEvent.target.parentNode as SVGGElement).style("cursor", "grab");
+                d3.select((event.sourceEvent.target as Element).parentNode as SVGGElement).style("cursor", "grab");
 
-                d3.select(event.sourceEvent.target.parentNode as SVGGElement)
+                d3.select((event.sourceEvent.target as Element).parentNode as SVGGElement)
                     .select(".glass-bubble")
                     .transition()
                     .duration(300)
@@ -340,7 +353,7 @@ const CryptoBubblesUI: React.FC = () => {
                     .style("opacity", 0.85)
                     .attr("stroke-width", 2.5);
 
-                d3.select(event.sourceEvent.target.parentNode as SVGGElement)
+                d3.select((event.sourceEvent.target as Element).parentNode as SVGGElement)
                     .select(".outer-glow")
                     .transition()
                     .duration(300)
@@ -351,8 +364,8 @@ const CryptoBubblesUI: React.FC = () => {
         bubbleGroups.call(drag);
 
         bubbleGroups
-            .on("mouseenter", (event, d) => {
-                if (event.defaultPrevented) return;
+            .on("mouseenter", (event: React.MouseEvent<SVGGElement>, d: CryptoCoin) => {
+                if ((event as unknown as { defaultPrevented: boolean }).defaultPrevented) return;
 
                 const group = d3.select(event.currentTarget as SVGGElement);
 
@@ -382,7 +395,7 @@ const CryptoBubblesUI: React.FC = () => {
 
                 group.selectAll("text").transition().duration(200).style("filter", "drop-shadow(0 0 8px currentColor)");
             })
-            .on("mouseleave", (event, d) => {
+            .on("mouseleave", (event: React.MouseEvent<SVGGElement>, d: CryptoCoin) => {
                 const group = d3.select(event.currentTarget as SVGGElement);
 
                 group
@@ -411,8 +424,8 @@ const CryptoBubblesUI: React.FC = () => {
 
                 group.selectAll("text").transition().duration(300).style("filter", "none");
             })
-            .on("click", (event, d) => {
-                if ((event as any).defaultPrevented) return;
+            .on("click", (event: React.MouseEvent<SVGGElement>, d: CryptoCoin) => {
+                if ((event as unknown as { defaultPrevented: boolean }).defaultPrevented) return;
 
                 setSelectedBubble(d);
 
