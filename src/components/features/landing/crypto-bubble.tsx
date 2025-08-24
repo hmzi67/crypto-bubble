@@ -515,8 +515,8 @@ const CryptoBubblesUI: React.FC = () => {
                         key={period}
                         onClick={() => setSelectedPeriod(period)}
                         className={`px-4 py-2 rounded-lg font-medium transition-all ${selectedPeriod === period
-                                ? "bg-red-600 text-white shadow-lg"
-                                : "bg-gray-800 text-gray-300 hover:bg-gray-700 hover:text-white"
+                            ? "bg-red-600 text-white shadow-lg"
+                            : "bg-gray-800 text-gray-300 hover:bg-gray-700 hover:text-white"
                             }`}
                     >
                         {period}
