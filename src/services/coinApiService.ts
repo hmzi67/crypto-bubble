@@ -96,7 +96,7 @@ export async function fetchTopCryptos(
  * Create mock forex pairs for demonstration
  */
 function createMockForexPairs(): CryptoBubbleData[] {
-  const forexPairs = [
+  const forexPairs: CryptoBubbleData[] = [
     {
       id: "usdeur-fx",
       symbol: "USDEURfx",
@@ -104,7 +104,7 @@ function createMockForexPairs(): CryptoBubbleData[] {
       marketCap: 25000000,
       priceChange24h: 0.25,
       volume24h: 3200000,
-      category: "forex-pair" as "forex-pair",
+      category: "forex-pair", // now typed correctly
       color: "#8b5cf6",
       size: 55,
     },
@@ -115,7 +115,7 @@ function createMockForexPairs(): CryptoBubbleData[] {
       marketCap: 15000000,
       priceChange24h: -0.32,
       volume24h: 1800000,
-      category: "forex-pair" as "forex-pair",
+      category: "forex-pair",
       color: "#8b5cf6",
       size: 38,
     },
@@ -126,7 +126,7 @@ function createMockForexPairs(): CryptoBubbleData[] {
       marketCap: 22000000,
       priceChange24h: 0.18,
       volume24h: 2800000,
-      category: "forex-pair" as "forex-pair",
+      category: "forex-pair",
       color: "#8b5cf6",
       size: 50,
     },
@@ -137,7 +137,7 @@ function createMockForexPairs(): CryptoBubbleData[] {
       marketCap: 18000000,
       priceChange24h: -0.15,
       volume24h: 2100000,
-      category: "forex-pair" as "forex-pair",
+      category: "forex-pair",
       color: "#8b5cf6",
       size: 42,
     },
