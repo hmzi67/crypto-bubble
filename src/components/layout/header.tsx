@@ -72,7 +72,7 @@ const Header: React.FC<HeaderProps> = ({
                             <div className="absolute -top-1 -right-1 w-4 h-4 bg-green-400 rounded-full animate-pulse shadow-lg"></div>
                         </div>
                         <div>
-                            <h1 className="text-white text-2xl font-black tracking-wider bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
+                            <h1 className=" text-2xl font-black tracking-wider bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
                                 {title}
                             </h1>
                             <p className="text-gray-400 text-xs font-medium">{subtitle}</p>
