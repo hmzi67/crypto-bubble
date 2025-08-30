@@ -169,7 +169,7 @@ const Header: React.FC<HeaderProps> = ({
                     {/* User Profile */}
                     <div className="flex items-center gap-3 bg-gray-800/50 backdrop-blur-sm px-4 py-2 rounded-xl border border-gray-700/50">
                         <User className="w-4 h-4 text-gray-400" />
-                        <span className="text-white text-sm font-medium">tayyabayasmine</span>
+                        <span className="text-white text-sm font-medium">Hamza</span>
                     </div>
 
                     {/* Custom Right Actions */}
