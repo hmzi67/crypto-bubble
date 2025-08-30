@@ -1,6 +1,7 @@
 // API service to han
 
 import { CryptoBubbleData } from "@/types";
+import { fetchForexCurrencies, fetchForexPairs } from "./forexApiService";
 
 const API_KEY = process.env.NEXT_PUBLIC_COINGECKO_API_KEY || "";
 const BASE_URL = "https://api.coingecko.com/api/v3";
@@ -243,5 +244,32 @@ export async function getMarketOverview() {
       totalVolume: 129260000000, // Default fallback value
       marketCapPercentage: {},
     };
+  }
+}
+
+/**
+ * Fetch data based on selected category
+ */
+export async function fetchMarketData(
+  category: "crypto" | "forex" | "forex-pair",
+  limit: number = 20
+): Promise<CryptoBubbleData[]> {
+  switch (category) {
+    case "crypto":
+      return fetchTopCryptos(limit);
+    case "forex":
+      const forexData = await fetchForexCurrencies(limit);
+      return forexData.map(item => ({
+        ...item,
+        category: item.category 
+      }));
+    case "forex-pair":
+      const pairData = await fetchForexPairs(limit);
+      return pairData.map(item => ({
+        ...item,
+        category: item.category 
+      }));
+    default:
+      return fetchTopCryptos(limit);
   }
 }

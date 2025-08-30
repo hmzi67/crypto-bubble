@@ -1,7 +1,7 @@
 "use client"
 
 import React, { useState } from "react";
-import { Home, TrendingUp } from "lucide-react";
+import { Home } from "lucide-react";
 import Header from "@/components/layout/header";
 
 const Dashboard: React.FC = () => {
