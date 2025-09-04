@@ -104,7 +104,7 @@ const Header: React.FC<HeaderProps> = ({
                     {/* Enhanced Search Bar */}
                     {showSearch && (
                         <div className="relative group">
-                            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5 group-focus-within:text-blue-400 transition-colors" />
+                            <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5 group-focus-within:text-blue-400 transition-colors z-10" />
                             <input
                                 type="text"
                                 placeholder={searchPlaceholder}
@@ -120,35 +120,35 @@ const Header: React.FC<HeaderProps> = ({
                     {showControls && (
                         <>
                             {/* Range Selector */}
-                            <div className="flex items-center gap-3 bg-gray-800/50 backdrop-blur-sm px-4 py-2 rounded-xl border border-gray-700/50">
-                                <span className="text-gray-300 text-sm font-medium">Range:</span>
-                                <select
-                                    value={selectedRange}
-                                    onChange={(e) => setSelectedRange(e.target.value)}
-                                    className="bg-transparent text-white font-semibold focus:outline-none cursor-pointer hover:text-blue-400 transition-colors"
-                                >
-                                    <option value="1 - 50" className="bg-gray-800">1 - 50</option>
-                                    <option value="1 - 100" className="bg-gray-800">1 - 100</option>
-                                    <option value="1 - 200" className="bg-gray-800">1 - 200</option>
-                                    <option value="1 - 500" className="bg-gray-800">1 - 500</option>
-                                </select>
-                            </div>
+                            {/*<div className="flex items-center gap-3 bg-gray-800/50 backdrop-blur-sm px-4 py-2 rounded-xl border border-gray-700/50">*/}
+                            {/*    <span className="text-gray-300 text-sm font-medium">Range:</span>*/}
+                            {/*    <select*/}
+                            {/*        value={selectedRange}*/}
+                            {/*        onChange={(e) => setSelectedRange(e.target.value)}*/}
+                            {/*        className="bg-transparent text-white font-semibold focus:outline-none cursor-pointer hover:text-blue-400 transition-colors"*/}
+                            {/*    >*/}
+                            {/*        <option value="1 - 50" className="bg-gray-800">1 - 50</option>*/}
+                            {/*        <option value="1 - 100" className="bg-gray-800">1 - 100</option>*/}
+                            {/*        <option value="1 - 200" className="bg-gray-800">1 - 200</option>*/}
+                            {/*        <option value="1 - 500" className="bg-gray-800">1 - 500</option>*/}
+                            {/*    </select>*/}
+                            {/*</div>*/}
 
                             {/* Currency Selector */}
-                            <div className="flex items-center gap-3 bg-gray-800/50 backdrop-blur-sm px-4 py-2 rounded-xl border border-gray-700/50">
-                                <span className="text-gray-300 text-sm font-medium">Currency:</span>
-                                <select
-                                    value={selectedCurrency}
-                                    onChange={(e) => setSelectedCurrency(e.target.value)}
-                                    className="bg-transparent text-white font-semibold focus:outline-none cursor-pointer hover:text-blue-400 transition-colors"
-                                >
-                                    <option value="USD" className="bg-gray-800">$ USD</option>
-                                    <option value="EUR" className="bg-gray-800">€ EUR</option>
-                                    <option value="GBP" className="bg-gray-800">£ GBP</option>
-                                    <option value="JPY" className="bg-gray-800">¥ JPY</option>
-                                    <option value="BTC" className="bg-gray-800">₿ BTC</option>
-                                </select>
-                            </div>
+                            {/*<div className="flex items-center gap-3 bg-gray-800/50 backdrop-blur-sm px-4 py-2 rounded-xl border border-gray-700/50">*/}
+                            {/*    <span className="text-gray-300 text-sm font-medium">Currency:</span>*/}
+                            {/*    <select*/}
+                            {/*        value={selectedCurrency}*/}
+                            {/*        onChange={(e) => setSelectedCurrency(e.target.value)}*/}
+                            {/*        className="bg-transparent text-white font-semibold focus:outline-none cursor-pointer hover:text-blue-400 transition-colors"*/}
+                            {/*    >*/}
+                            {/*        <option value="USD" className="bg-gray-800">$ USD</option>*/}
+                            {/*        <option value="EUR" className="bg-gray-800">€ EUR</option>*/}
+                            {/*        <option value="GBP" className="bg-gray-800">£ GBP</option>*/}
+                            {/*        <option value="JPY" className="bg-gray-800">¥ JPY</option>*/}
+                            {/*        <option value="BTC" className="bg-gray-800">₿ BTC</option>*/}
+                            {/*    </select>*/}
+                            {/*</div>*/}
 
                             {/* Action Buttons */}
                             {/*<div className="flex items-center gap-2">*/}
@@ -173,7 +173,7 @@ const Header: React.FC<HeaderProps> = ({
                     {/*</div>*/}
 
                     {/* Custom Right Actions */}
-                    {rightActions}
+                    {/*{rightActions}*/}
                 </div>
             </div>
 

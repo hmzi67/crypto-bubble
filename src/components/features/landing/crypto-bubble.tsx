@@ -864,24 +864,24 @@ const CryptoBubblesUI: React.FC = () => {
                             </div>
                             <p className="text-gray-400 mb-1">Showing <span className="text-white font-semibold">{marketData.length}</span> bubbles</p>
                             <p className="text-xs text-gray-500">Size based on {selectedCategory === 'crypto' ? 'market cap' : 'rate & volume'}</p>
-                            <p className="text-xs text-blue-400 mt-2 font-mono">User: tayyabayasmine</p>
+                            {/*<p className="text-xs text-blue-400 mt-2 font-mono">User: tayyabayasmine</p>*/}
                         </div>
                         {/* Enhanced Time Display */}
-                        <div className="absolute top-4 right-4 bg-black/80 backdrop-blur-md text-gray-300 text-sm px-6 py-4 rounded-2xl border border-gray-700/50 shadow-2xl">
-                            <p className="font-bold text-white mb-1 flex items-center gap-2">
-                                🕒 Current Time (UTC)
-                            </p>
-                            <p className="font-mono text-lg text-blue-400 mb-2">{getCurrentTimeUTC()}</p>
-                            <div className="flex items-center justify-between">
-                                <div className="flex items-center gap-1">
-                                    <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
-                                    <span className="text-xs text-green-400 font-medium">Live Data</span>
-                                </div>
-                                <div className="text-xs text-gray-500">
-                                    {selectedCategory === 'crypto' ? 'Market' : selectedCategory === 'forex' ? 'FX' : 'Pairs'}
-                                </div>
-                            </div>
-                        </div>
+                        {/*<div className="absolute top-4 right-4 bg-black/80 backdrop-blur-md text-gray-300 text-sm px-6 py-4 rounded-2xl border border-gray-700/50 shadow-2xl">*/}
+                        {/*    <p className="font-bold text-white mb-1 flex items-center gap-2">*/}
+                        {/*        🕒 Current Time (UTC)*/}
+                        {/*    </p>*/}
+                        {/*    <p className="font-mono text-lg text-blue-400 mb-2">{getCurrentTimeUTC()}</p>*/}
+                        {/*    <div className="flex items-center justify-between">*/}
+                        {/*        <div className="flex items-center gap-1">*/}
+                        {/*            <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>*/}
+                        {/*            <span className="text-xs text-green-400 font-medium">Live Data</span>*/}
+                        {/*        </div>*/}
+                        {/*        <div className="text-xs text-gray-500">*/}
+                        {/*            {selectedCategory === 'crypto' ? 'Market' : selectedCategory === 'forex' ? 'FX' : 'Pairs'}*/}
+                        {/*        </div>*/}
+                        {/*    </div>*/}
+                        {/*</div>*/}
                     </div>
                 )}
             </div>
