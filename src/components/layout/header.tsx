@@ -151,26 +151,26 @@ const Header: React.FC<HeaderProps> = ({
                             </div>
 
                             {/* Action Buttons */}
-                            <div className="flex items-center gap-2">
-                                <button
-                                    onClick={onRestartAnimation}
-                                    className="group p-3 text-gray-400 hover:text-white hover:bg-blue-600/20 rounded-xl transition-all duration-300 border border-gray-700/50 hover:border-blue-500/50"
-                                    title="Restart Animation"
-                                >
-                                    <Menu className="w-5 h-5 group-hover:rotate-180 transition-transform duration-300" />
-                                </button>
-                                <button className="group p-3 text-gray-400 hover:text-white hover:bg-purple-600/20 rounded-xl transition-all duration-300 border border-gray-700/50 hover:border-purple-500/50">
-                                    <Settings className="w-5 h-5 group-hover:rotate-90 transition-transform duration-300" />
-                                </button>
-                            </div>
+                            {/*<div className="flex items-center gap-2">*/}
+                            {/*    <button*/}
+                            {/*        onClick={onRestartAnimation}*/}
+                            {/*        className="group p-3 text-gray-400 hover:text-white hover:bg-blue-600/20 rounded-xl transition-all duration-300 border border-gray-700/50 hover:border-blue-500/50"*/}
+                            {/*        title="Restart Animation"*/}
+                            {/*    >*/}
+                            {/*        <Menu className="w-5 h-5 group-hover:rotate-180 transition-transform duration-300" />*/}
+                            {/*    </button>*/}
+                            {/*    <button className="group p-3 text-gray-400 hover:text-white hover:bg-purple-600/20 rounded-xl transition-all duration-300 border border-gray-700/50 hover:border-purple-500/50">*/}
+                            {/*        <Settings className="w-5 h-5 group-hover:rotate-90 transition-transform duration-300" />*/}
+                            {/*    </button>*/}
+                            {/*</div>*/}
                         </>
                     )}
 
                     {/* User Profile */}
-                    <div className="flex items-center gap-3 bg-gray-800/50 backdrop-blur-sm px-4 py-2 rounded-xl border border-gray-700/50">
-                        <User className="w-4 h-4 text-gray-400" />
-                        <span className="text-white text-sm font-medium">Hamza</span>
-                    </div>
+                    {/*<div className="flex items-center gap-3 bg-gray-800/50 backdrop-blur-sm px-4 py-2 rounded-xl border border-gray-700/50">*/}
+                    {/*    <User className="w-4 h-4 text-gray-400" />*/}
+                    {/*    <span className="text-white text-sm font-medium">Hamza</span>*/}
+                    {/*</div>*/}
 
                     {/* Custom Right Actions */}
                     {rightActions}
