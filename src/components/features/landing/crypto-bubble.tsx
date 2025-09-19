@@ -45,28 +45,20 @@ type ExchangeRateResponse = {
     rates: { [key: string]: number };
 };
 
-
 // --- Real Data Fetching Functions ---
-
 const fetchRealCryptoData = async (): Promise<CryptoCoin[]> => {
     try {
-        // Using CoinGecko API - Free tier, no API key required for basic calls
-        // Fetch top 25 coins by market cap
         const response = await fetch(
             'https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=100&page=1&sparkline=false&locale=en'
         );
-
         if (!response.ok) {
             console.error(`Crypto API error: ${response.status} ${response.statusText}`);
-            throw new Error(`Failed to fetch crypto data: ${response.status}`);
+            throw new Error(`Failed to fetch crypto  ${response.status}`);
         }
-
         const data: CoinGeckoCoin[] = await response.json();
-        
         if (!data || !Array.isArray(data)) {
             throw new Error('Invalid crypto data format received');
         }
-
         return data.map((coin) => ({
             id: coin.id,
             symbol: coin.symbol.toUpperCase(),
@@ -80,32 +72,23 @@ const fetchRealCryptoData = async (): Promise<CryptoCoin[]> => {
             color: (coin.price_change_percentage_24h ?? 0) > 0 ? "#22c55e" : "#ef4444"
         }));
     } catch (err) {
-        console.error("Error fetching real crypto data:", err);
+        console.error("Error fetching real crypto ", err);
         return [];
     }
 };
 
 const fetchRealForexData = async (): Promise<CryptoCoin[]> => {
     try {
-        // Note: Free, real-time, comprehensive forex APIs are rare.
-        // This example uses exchangerate-api.com which provides daily rates.
-        // For true real-time forex, you'd typically need a paid service.
-        // This is a demonstration of integration; data might not be "live" in the strictest sense.
         const response = await fetch('https://api.exchangerate-api.com/v4/latest/USD');
-
         if (!response.ok) {
             console.error(`Forex API error: ${response.status} ${response.statusText}`);
             throw new Error(`Failed to fetch forex data: ${response.status}`);
         }
-
         const data: ExchangeRateResponse = await response.json();
-        
         if (!data || !data.rates) {
             throw new Error('Invalid forex data format received');
         }
         const rates = data.rates;
-
-        // Define currencies to show and their importance/region for mock data purposes
         const currenciesToShow = [
             { symbol: "EUR", name: "Euro", country: "EU", importance: 100 },
             { symbol: "GBP", name: "British Pound", country: "GB", importance: 85 },
@@ -128,57 +111,45 @@ const fetchRealForexData = async (): Promise<CryptoCoin[]> => {
             { symbol: "KRW", name: "South Korean Won", country: "KR", importance: 40 },
             { symbol: "SGD", name: "Singapore Dollar", country: "SG", importance: 45 },
         ];
-
         return currenciesToShow.map((currency): CryptoCoin | null => {
             const rate = rates[currency.symbol];
             if (rate === undefined) {
-                // If rate not found, skip or use a default/placeholder
                 console.warn(`Rate for ${currency.symbol} not found in API response.`);
-                return null; // Filter out later
+                return null;
             }
-
-            // Mock change percentage for demonstration
-            const change = (Math.random() * 2 - 1); // Random change between -1% and +1%
-
+            const change = (Math.random() * 2 - 1);
             return {
                 id: `${currency.symbol.toLowerCase()}-forex`,
                 symbol: currency.symbol,
                 name: currency.name,
                 change24h: parseFloat(change.toFixed(2)),
-                marketCap: rate * currency.importance * 10000000, // Mocked size
+                marketCap: rate * currency.importance * 10000000,
                 price: rate,
-                volume24h: currency.importance * 50000000, // Mocked volume
+                volume24h: currency.importance * 50000000,
                 currentRate: rate,
                 countryCode: currency.country,
                 category: currency.importance >= 70 ? "major" : currency.importance >= 40 ? "minor" : "exotic",
                 color: currency.importance >= 70 ? "#10b981" : currency.importance >= 40 ? "#3b82f6" : "#8b5cf6"
             };
-        }).filter((item): item is CryptoCoin => item !== null); // Type guard for filtering
+        }).filter((item): item is CryptoCoin => item !== null);
     } catch (err) {
-        console.error("Error fetching real forex data:", err);
+        console.error("Error fetching real forex ", err);
         return [];
     }
 };
 
 const fetchRealForexPairsData = async (): Promise<CryptoCoin[]> => {
     try {
-        // Again, using exchangerate-api for demonstration.
-        // True real-time forex pair data usually requires a paid API.
         const response = await fetch('https://api.exchangerate-api.com/v4/latest/USD');
-
         if (!response.ok) {
             console.error(`Forex Pairs API error: ${response.status} ${response.statusText}`);
             throw new Error(`Failed to fetch forex pairs data: ${response.status}`);
         }
-
         const data: ExchangeRateResponse = await response.json();
-        
         if (!data || !data.rates) {
             throw new Error('Invalid forex pairs data format received');
         }
         const rates = data.rates;
-
-        // Define pairs to show
         const pairsToShow = [
             { base: "EUR", quote: "USD" },
             { base: "GBP", quote: "USD" },
@@ -196,40 +167,30 @@ const fetchRealForexPairsData = async (): Promise<CryptoCoin[]> => {
             { base: "CAD", quote: "JPY" },
             { base: "CHF", quote: "JPY" },
         ];
-
         const pairData: CryptoCoin[] = [];
-
         for (const pair of pairsToShow) {
             const baseRate = rates[pair.base];
             const quoteRate = rates[pair.quote];
-
             if (baseRate !== undefined && quoteRate !== undefined) {
-                // Calculate pair rate (e.g., EUR/USD = Rate_EUR / Rate_USD)
-                // Since USD is base, Rate_USD = 1
                 let pairRate: number;
                 if (pair.base === "USD") {
-                    pairRate = quoteRate; // USD/XXX = 1 / Rate_XXX => Rate_XXX (inverted)
+                    pairRate = quoteRate;
                 } else if (pair.quote === "USD") {
-                    pairRate = baseRate; // XXX/USD = Rate_XXX
+                    pairRate = baseRate;
                 } else {
-                    // For non-USD pairs, e.g., EUR/GBP
                     pairRate = baseRate / quoteRate;
                 }
-
-                // Mock change percentage and volume for demonstration
-                const change = (Math.random() * 2 - 1); // Random change between -1% and +1%
-                const volume = Math.floor(Math.random() * 100) + 1; // Mock volume 1-100
-
-                const spread = pairRate * 0.0001; // Mock spread
-
+                const change = (Math.random() * 2 - 1);
+                const volume = Math.floor(Math.random() * 100) + 1;
+                const spread = pairRate * 0.0001;
                 pairData.push({
                     id: `${pair.base}${pair.quote}-pair`.toLowerCase(),
                     symbol: `${pair.base}${pair.quote}`,
                     name: `${pair.base}/${pair.quote}`,
                     change24h: parseFloat(change.toFixed(2)),
-                    marketCap: pairRate * volume * 10000000, // Mocked size
+                    marketCap: pairRate * volume * 10000000,
                     price: pairRate,
-                    volume24h: volume * 80000000, // Mocked volume
+                    volume24h: volume * 80000000,
                     currentRate: pairRate,
                     bid: pairRate - spread / 2,
                     ask: pairRate + spread / 2,
@@ -241,7 +202,6 @@ const fetchRealForexPairsData = async (): Promise<CryptoCoin[]> => {
                 console.warn(`Rate for pair ${pair.base}/${pair.quote} not found.`);
             }
         }
-
         return pairData;
     } catch (err) {
         console.error("Error fetching real forex pairs data:", err);
@@ -263,16 +223,12 @@ const CryptoBubblesUI: React.FC = () => {
     const [loading, setLoading] = useState<boolean>(true);
     const [error, setError] = useState<string | null>(null);
 
-    // Fetch market data based on selected category
     useEffect(() => {
         let isMounted = true;
         const fetchData = async () => {
             setLoading(true);
             setError(null);
             try {
-                // Removed artificial delay for real data
-                // await new Promise(resolve => setTimeout(resolve, 1000));
-                if (!isMounted) return;
                 let data: CryptoCoin[];
                 switch (selectedCategory) {
                     case "crypto":
@@ -287,7 +243,6 @@ const CryptoBubblesUI: React.FC = () => {
                     default:
                         data = await fetchRealCryptoData();
                 }
-                // Filter based on search term
                 const filtered = data.filter(
                     (item) =>
                         item.symbol.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -310,7 +265,6 @@ const CryptoBubblesUI: React.FC = () => {
         };
     }, [searchTerm, selectedCategory]);
 
-    // Handle viewport resizing
     useEffect(() => {
         const handleResize = () => {
             setDimensions({
@@ -323,7 +277,7 @@ const CryptoBubblesUI: React.FC = () => {
         return () => window.removeEventListener("resize", handleResize);
     }, []);
 
-    // D3 Rendering with enhanced glassy effects
+    // D3 Rendering with enhanced glassy effects and smoother physics
     useEffect(() => {
         if (!svgRef.current) return;
         if (loading || error || marketData.length === 0) return;
@@ -332,145 +286,52 @@ const CryptoBubblesUI: React.FC = () => {
         const { width, height } = dimensions;
         const maxValue = d3.max(marketData, (d) => d.marketCap) ?? 1;
         const minValue = d3.min(marketData, (d) => d.marketCap) ?? 0;
-        // Enhanced radius scale for better size distribution based on rate/value
+
         const radiusScale = d3.scalePow()
-            .exponent(0.6) // Makes the size differences more pronounced
+            .exponent(0.6)
             .domain([minValue, maxValue])
             .range([30, Math.min(width, height) * 0.12]);
+
         const bubbleData: CryptoCoin[] = marketData.map((d) => ({
             ...d,
             radius: radiusScale(d.marketCap),
             x: Math.random() * width,
             y: Math.random() * height,
-            vx: (Math.random() - 0.5) * 2.0, // Slower initial velocity
-            vy: (Math.random() - 0.5) * 2.0, // Slower initial velocity
+            vx: 0, // Initialize velocities to 0
+            vy: 0,
             fx: null,
             fy: null,
         }));
+
+        // --- Enhanced Simulation Setup ---
         const simulation = d3
             .forceSimulation<CryptoCoin>(bubbleData)
-            .force("charge", d3.forceManyBody().strength(-50)) // Reduced charge force
+            // Standard charge force for repulsion
+            .force("charge", d3.forceManyBody().strength(-50))
+            // Standard collision detection
             .force("collision", d3.forceCollide<CryptoCoin>()
-                .radius((d) => d.radius! + 10)
-                .strength(1.0) // Reduced collision strength
-                .iterations(2)
+                .radius((d) => (d.radius ?? 0) + 10) // Increased padding slightly
+                .strength(0.9) // Stronger collision response for crispness
+                .iterations(3) // More iterations for better collision resolution
             )
-            .force("repel", () => {
-                // Slower collision repelling force
-                const repelStrength = 1.0; // Reduced repelling force
-                for (let i = 0; i < bubbleData.length; i++) {
-                    const nodeA = bubbleData[i];
-                    if (nodeA.x === undefined || nodeA.y === undefined) continue;
-                    
-                    for (let j = i + 1; j < bubbleData.length; j++) {
-                        const nodeB = bubbleData[j];
-                        if (nodeB.x === undefined || nodeB.y === undefined) continue;
-                        
-                        const dx = nodeB.x - nodeA.x;
-                        const dy = nodeB.y - nodeA.y;
-                        const distance = Math.sqrt(dx * dx + dy * dy);
-                        const minDistance = nodeA.radius! + nodeB.radius! + 10;
-                        
-                        if (distance < minDistance && distance > 0) {
-                            // Calculate slower repelling force
-                            const force = (minDistance - distance) / distance * repelStrength;
-                            const fx = dx * force;
-                            const fy = dy * force;
-                            
-                            // Apply slower repelling forces
-                            nodeB.vx = (nodeB.vx || 0) + fx;
-                            nodeB.vy = (nodeB.vy || 0) + fy;
-                            nodeA.vx = (nodeA.vx || 0) - fx;
-                            nodeA.vy = (nodeA.vy || 0) - fy;
-                        }
-                    }
-                }
-            })
-            .force("autoMove", () => {
-                // Slower speed automatic movement force
-                bubbleData.forEach((d, i) => {
-                    if (d.x !== undefined && d.y !== undefined) {
-                        // Slower random drift for movement
-                        const driftStrength = 0.5; // Reduced drift
-                        d.vx = (d.vx || 0) + (Math.random() - 0.5) * driftStrength;
-                        d.vy = (d.vy || 0) + (Math.random() - 0.5) * driftStrength;
-                        
-                        // Add slower periodic direction changes
-                        const time = Date.now() * 0.001; // Slower time multiplier
-                        const phaseOffset = i * 0.3;
-                        
-                        // Slower sinusoidal forces for chaotic movement
-                        const directionChangeX = Math.sin(time * 0.5 + phaseOffset) * 0.5;
-                        const directionChangeY = Math.cos(time * 0.6 + phaseOffset * 0.5) * 0.5;
-                        
-                        d.vx = (d.vx || 0) + directionChangeX;
-                        d.vy = (d.vy || 0) + directionChangeY;
-                        
-                        // Slower velocity boosts
-                        if (Math.random() < 0.01) { // 1% chance per tick
-                            const boostAngle = Math.random() * Math.PI * 2;
-                            const boostStrength = 1.0; // Reduced boost
-                            d.vx = (d.vx || 0) + Math.cos(boostAngle) * boostStrength;
-                            d.vy = (d.vy || 0) + Math.sin(boostAngle) * boostStrength;
-                        }
-                        
-                        // Slower minimum speed for constant movement
-                        const currentSpeed = Math.sqrt((d.vx || 0) ** 2 + (d.vy || 0) ** 2);
-                        const minSpeed = 0.5; // Reduced minimum speed
-                        if (currentSpeed < minSpeed) {
-                            const angle = Math.random() * Math.PI * 2;
-                            d.vx = Math.cos(angle) * minSpeed;
-                            d.vy = Math.sin(angle) * minSpeed;
-                        }
-                    }
-                });
-            })
-            .force("boundary", () => {
-                bubbleData.forEach(d => {
-                    if (d.x !== undefined && d.y !== undefined) {
-                        // Slower boundary collision
-                        const padding = d.radius! + 3;
-                        const bounceForce = 1.0; // Reduced bounce force
-                        
-                        if (d.x < padding) {
-                            d.x = padding;
-                            d.vx = Math.abs(d.vx || 0) + bounceForce; // Slower bounce off left wall
-                        }
-                        if (d.x > width - padding) {
-                            d.x = width - padding;
-                            d.vx = -Math.abs(d.vx || 0) - bounceForce; // Slower bounce off right wall
-                        }
-                        if (d.y < padding) {
-                            d.y = padding;
-                            d.vy = Math.abs(d.vy || 0) + bounceForce; // Slower bounce off top wall
-                        }
-                        if (d.y > height - padding) {
-                            d.y = height - padding;
-                            d.vy = -Math.abs(d.vy || 0) - bounceForce; // Slower bounce off bottom wall
-                        }
-                        
-                        // Some friction for speed retention
-                        d.vx = (d.vx || 0) * 0.99; // A bit of friction
-                        d.vy = (d.vy || 0) * 0.99;
-                        
-                        // Slower possible velocity for movement
-                        const maxVelocity = 5.0; // Reduced maximum velocity
-                        if (d.vx !== undefined && Math.abs(d.vx) > maxVelocity) {
-                            d.vx = Math.sign(d.vx) * maxVelocity;
-                        }
-                        if (d.vy !== undefined && Math.abs(d.vy) > maxVelocity) {
-                            d.vy = Math.sign(d.vy) * maxVelocity;
-                        }
-                    }
-                });
-            })
-            .alphaDecay(0.0228) // default alpha decay
-            .velocityDecay(0.4) // default velocity decay
-            .alphaMin(0.001); // default alpha min
+            // Centering force to keep things within bounds naturally
+            .force("center", d3.forceCenter(width / 2, height / 2).strength(0.02))
+            // Custom force for subtle continuous movement
+            .force("autoMove", autoMoveForce(0.1)) // Reduced strength for subtlety
+            // Custom force for boundary repulsion (replaces manual boundary logic)
+            .force("boundary", boundaryForce(width, height, 20, 0.05)); // Padding and strength
+
+        // Fine-tune simulation parameters for smoothness
+        simulation
+            .alphaDecay(0.02) // Slower decay for longer animation
+            .velocityDecay(0.2) // Lower velocity decay for smoother motion (was 0.4)
+            .alphaMin(0.001);
+
         simulationRef.current = simulation;
-        // Enhanced gradients and filters for ultra-glassy effect
+
+        // --- Gradients and Filters (Remain largely the same) ---
         const defs = svg.append("defs");
-        // Create multiple gradients for different categories with enhanced glass effect
+
         const createGlassGradient = (id: string, primaryColor: string, secondaryColor: string) => {
             const gradient = defs.append("radialGradient")
                 .attr("id", id)
@@ -483,14 +344,14 @@ const CryptoBubblesUI: React.FC = () => {
             gradient.append("stop").attr("offset", "70%").attr("stop-color", secondaryColor).attr("stop-opacity", 0.6);
             gradient.append("stop").attr("offset", "100%").attr("stop-color", secondaryColor).attr("stop-opacity", 0.8);
         };
-        // Create gradients for different states
+
         createGlassGradient("glass-positive", "rgba(34, 197, 94, 0.8)", "rgba(16, 185, 129, 0.9)");
         createGlassGradient("glass-negative", "rgba(239, 68, 68, 0.8)", "rgba(220, 38, 38, 0.9)");
         createGlassGradient("glass-forex-major", "rgba(16, 185, 129, 0.8)", "rgba(5, 150, 105, 0.9)");
         createGlassGradient("glass-forex-minor", "rgba(59, 130, 246, 0.8)", "rgba(37, 99, 235, 0.9)");
         createGlassGradient("glass-forex-exotic", "rgba(147, 51, 234, 0.8)", "rgba(126, 34, 206, 0.9)");
         createGlassGradient("glass-forex-pair", "rgba(245, 158, 11, 0.8)", "rgba(217, 119, 6, 0.9)");
-        // Enhanced glow filter
+
         const glowFilter = defs.append("filter")
             .attr("id", "enhanced-glow")
             .attr("x", "-100%")
@@ -505,7 +366,7 @@ const CryptoBubblesUI: React.FC = () => {
         const feMerge = glowFilter.append("feMerge");
         feMerge.append("feMergeNode").attr("in", "glowColor");
         feMerge.append("feMergeNode").attr("in", "SourceGraphic");
-        // Glass reflection filter
+
         const reflectionFilter = defs.append("filter")
             .attr("id", "glass-reflection")
             .attr("x", "-50%")
@@ -523,7 +384,8 @@ const CryptoBubblesUI: React.FC = () => {
             .attr("x", "-50")
             .attr("y", "-50")
             .attr("z", "200");
-        // Create bubble groups with enhanced layering
+
+        // --- Bubble Elements (Remain largely the same) ---
         const bubbleGroups = svg
             .selectAll<SVGGElement, CryptoCoin>(".bubble-group")
             .data(bubbleData)
@@ -531,11 +393,11 @@ const CryptoBubblesUI: React.FC = () => {
             .append("g")
             .attr("class", "bubble-group")
             .style("cursor", "grab");
-        // Outer atmospheric glow
+
         bubbleGroups
             .append("circle")
             .attr("class", "atmospheric-glow")
-            .attr("r", (d) => d.radius! + 15)
+            .attr("r", (d) => (d.radius ?? 0) + 15)
             .attr("fill", "none")
             .attr("stroke", (d) => {
                 if (selectedCategory === "crypto") return d.change24h > 0 ? "#22c55e" : "#ef4444";
@@ -547,11 +409,11 @@ const CryptoBubblesUI: React.FC = () => {
             .attr("stroke-width", 2)
             .style("opacity", 0.1)
             .style("animation", "pulse 3s ease-in-out infinite alternate");
-        // Mid-layer glow
+
         bubbleGroups
             .append("circle")
             .attr("class", "mid-glow")
-            .attr("r", (d) => d.radius! + 8)
+            .attr("r", (d) => (d.radius ?? 0) + 8)
             .attr("fill", "none")
             .attr("stroke", (d) => {
                 if (selectedCategory === "crypto") return d.change24h > 0 ? "#22c55e" : "#ef4444";
@@ -563,11 +425,11 @@ const CryptoBubblesUI: React.FC = () => {
             .attr("stroke-width", 3)
             .style("opacity", 0.3)
             .style("filter", "blur(6px)");
-        // Main glass bubble with enhanced effects
+
         bubbleGroups
             .append("circle")
             .attr("class", "main-bubble")
-            .attr("r", (d) => d.radius!)
+            .attr("r", (d) => d.radius ?? 0)
             .attr("fill", (d) => {
                 if (selectedCategory === "crypto") {
                     return d.change24h > 0 ? "url(#glass-positive)" : "url(#glass-negative)";
@@ -588,47 +450,47 @@ const CryptoBubblesUI: React.FC = () => {
             .style("opacity", 0.85)
             .style("filter", "url(#enhanced-glow)")
             .style("backdrop-filter", "blur(10px)");
-        // Primary glass highlight (large)
+
         bubbleGroups
             .append("ellipse")
             .attr("class", "primary-highlight")
-            .attr("cx", (d) => -d.radius! * 0.25)
-            .attr("cy", (d) => -d.radius! * 0.35)
-            .attr("rx", (d) => d.radius! * 0.45)
-            .attr("ry", (d) => d.radius! * 0.25)
+            .attr("cx", (d) => -(d.radius ?? 0) * 0.25)
+            .attr("cy", (d) => -(d.radius ?? 0) * 0.35)
+            .attr("rx", (d) => (d.radius ?? 0) * 0.45)
+            .attr("ry", (d) => (d.radius ?? 0) * 0.25)
             .attr("fill", "rgba(255, 255, 255, 0.7)")
             .style("opacity", 0.9)
             .style("filter", "blur(2px)");
-        // Secondary highlight (medium)
+
         bubbleGroups
             .append("circle")
             .attr("class", "secondary-highlight")
-            .attr("cx", (d) => d.radius! * 0.3)
-            .attr("cy", (d) => -d.radius! * 0.2)
-            .attr("r", (d) => d.radius! * 0.18)
+            .attr("cx", (d) => (d.radius ?? 0) * 0.3)
+            .attr("cy", (d) => -(d.radius ?? 0) * 0.2)
+            .attr("r", (d) => (d.radius ?? 0) * 0.18)
             .attr("fill", "rgba(255, 255, 255, 0.5)")
             .style("opacity", 0.8)
             .style("filter", "blur(1.5px)");
-        // Tertiary highlight (small sparkle)
+
         bubbleGroups
             .append("circle")
             .attr("class", "sparkle-highlight")
-            .attr("cx", (d) => -d.radius! * 0.4)
-            .attr("cy", (d) => d.radius! * 0.3)
-            .attr("r", (d) => d.radius! * 0.08)
+            .attr("cx", (d) => -(d.radius ?? 0) * 0.4)
+            .attr("cy", (d) => (d.radius ?? 0) * 0.3)
+            .attr("r", (d) => (d.radius ?? 0) * 0.08)
             .attr("fill", "rgba(255, 255, 255, 0.9)")
             .style("opacity", 0.7)
             .style("filter", "blur(0.5px)");
-        // Inner rim reflection
+
         bubbleGroups
             .append("circle")
             .attr("class", "inner-rim")
-            .attr("r", (d) => d.radius! - 4)
+            .attr("r", (d) => (d.radius ?? 0) - 4)
             .attr("fill", "none")
             .attr("stroke", "rgba(255, 255, 255, 0.3)")
             .attr("stroke-width", 1.5)
             .style("opacity", 0.6);
-        // Symbol text with enhanced readability
+
         bubbleGroups
             .append("text")
             .attr("class", "symbol-text")
@@ -636,7 +498,7 @@ const CryptoBubblesUI: React.FC = () => {
             .attr("dy", selectedCategory === 'forex-pair' ? "-0.5em" : "-0.2em")
             .style("font-family", "Inter, -apple-system, BlinkMacSystemFont, sans-serif")
             .style("font-weight", "900")
-            .style("font-size", (d) => `${Math.min(d.radius! * 0.32, 22)}px`)
+            .style("font-size", (d) => `${Math.min((d.radius ?? 0) * 0.32, 22)}px`)
             .style("fill", "#ffffff")
             .style("text-shadow", `
                 0 0 10px rgba(0,0,0,0.9),
@@ -654,7 +516,7 @@ const CryptoBubblesUI: React.FC = () => {
                 }
                 return d.symbol;
             });
-        // Current rate text for forex with enhanced styling
+
         if (selectedCategory === 'forex' || selectedCategory === 'forex-pair') {
             bubbleGroups
                 .append("text")
@@ -663,7 +525,7 @@ const CryptoBubblesUI: React.FC = () => {
                 .attr("dy", selectedCategory === 'forex-pair' ? "0.3em" : "0.5em")
                 .style("font-family", "JetBrains Mono, Monaco, Consolas, monospace")
                 .style("font-weight", "700")
-                .style("font-size", (d) => `${Math.min(d.radius! * 0.16, 12)}px`)
+                .style("font-size", (d) => `${Math.min((d.radius ?? 0) * 0.16, 12)}px`)
                 .style("fill", "#f8fafc")
                 .style("text-shadow", `
                     0 0 8px rgba(0,0,0,0.9),
@@ -681,7 +543,7 @@ const CryptoBubblesUI: React.FC = () => {
                     return "";
                 });
         }
-        // Enhanced change percentage text
+
         bubbleGroups
             .append("text")
             .attr("class", "change-text")
@@ -689,7 +551,7 @@ const CryptoBubblesUI: React.FC = () => {
             .attr("dy", (selectedCategory === 'forex' || selectedCategory === 'forex-pair') ? "1.2em" : "0.8em")
             .style("font-family", "Inter, -apple-system, BlinkMacSystemFont, sans-serif")
             .style("font-weight", "800")
-            .style("font-size", (d) => `${Math.min(d.radius! * 0.20, 13)}px`)
+            .style("font-size", (d) => `${Math.min((d.radius ?? 0) * 0.20, 13)}px`)
             .style("fill", (d) => (d.change24h > 0 ? "#22c55e" : "#ef4444"))
             .style("text-shadow", (d) => `
                 0 0 8px rgba(0,0,0,0.9),
@@ -698,64 +560,60 @@ const CryptoBubblesUI: React.FC = () => {
             `)
             .style("pointer-events", "none")
             .text((d) => `${d.change24h > 0 ? "+" : ""}${d.change24h.toFixed(2)}%`);
-        // Enhanced drag behavior with visual feedback
+
+        // --- Enhanced Drag Behavior ---
         const drag = d3
             .drag<SVGGElement, CryptoCoin>()
-            .on("start", function(event, d) {
-                if (!event.active && simulationRef.current) {
-                    simulationRef.current.alphaTarget(0.2).restart();
-                }
+            .on("start", function (event, d) {
+                if (!event.active) simulation.alphaTarget(0.3).restart(); // Slightly higher alpha for drag
                 d.fx = d.x;
                 d.fy = d.y;
                 const group = d3.select(this);
                 group.style("cursor", "grabbing");
-                // Enhanced drag feedback
                 group.select(".main-bubble")
                     .transition()
                     .duration(150)
-                    .attr("r", (d.radius || 30) * 1.1)
+                    .attr("r", ((d.radius ?? 0) * 1.1))
                     .style("opacity", 1)
                     .attr("stroke-width", 4);
                 group.select(".atmospheric-glow")
                     .transition()
                     .duration(150)
-                    .attr("r", (d.radius || 30) + 25)
+                    .attr("r", ((d.radius ?? 0) + 25))
                     .style("opacity", 0.3);
             })
-            .on("drag", function(event, d) {
+            .on("drag", function (event, d) {
                 d.fx = event.x;
                 d.fy = event.y;
             })
-            .on("end", function(event, d) {
-                if (!event.active && simulationRef.current) {
-                    simulationRef.current.alphaTarget(0.1);
-                }
+            .on("end", function (event, d) {
+                if (!event.active) simulation.alphaTarget(0); // Reset alpha target
                 d.fx = null;
                 d.fy = null;
                 const group = d3.select(this);
                 group.style("cursor", "grab");
-                // Reset drag feedback
                 group.select(".main-bubble")
                     .transition()
                     .duration(300)
-                    .attr("r", d.radius || 30)
+                    .attr("r", d.radius ?? 0)
                     .style("opacity", 0.85)
                     .attr("stroke-width", 2.5);
                 group.select(".atmospheric-glow")
                     .transition()
                     .duration(300)
-                    .attr("r", (d.radius || 30) + 15)
+                    .attr("r", ((d.radius ?? 0) + 15))
                     .style("opacity", 0.1);
             });
-        bubbleGroups.each(function(d) {
+
+        bubbleGroups.each(function (d) {
             d3.select(this).call(drag);
         });
-        // Enhanced mouse interactions
+
+        // --- Enhanced Mouse Interactions ---
         bubbleGroups
             .on("mouseenter", function (_event, d) {
                 const group = d3.select(this);
-                const radius = d.radius || 30;
-                // Enhanced hover effects
+                const radius = d.radius ?? 0;
                 group.select(".main-bubble")
                     .transition()
                     .duration(200)
@@ -779,7 +637,6 @@ const CryptoBubblesUI: React.FC = () => {
                     .style("opacity", 1)
                     .attr("rx", radius * 0.5)
                     .attr("ry", radius * 0.3);
-                // Text glow on hover
                 group.selectAll("text")
                     .transition()
                     .duration(200)
@@ -787,8 +644,7 @@ const CryptoBubblesUI: React.FC = () => {
             })
             .on("mouseleave", function (_event, d) {
                 const group = d3.select(this);
-                const radius = d.radius || 30;
-                // Reset hover effects
+                const radius = d.radius ?? 0;
                 group.select(".main-bubble")
                     .transition()
                     .duration(300)
@@ -819,9 +675,8 @@ const CryptoBubblesUI: React.FC = () => {
             })
             .on("click", function (_event, d) {
                 setSelectedBubble(d);
-                // Enhanced click ripple effect
                 const group = d3.select(this);
-                const radius = d.radius || 30;
+                const radius = d.radius ?? 0;
                 const clickRipple = group
                     .append("circle")
                     .attr("r", 0)
@@ -837,7 +692,6 @@ const CryptoBubblesUI: React.FC = () => {
                     .style("opacity", 0)
                     .style("stroke-width", 1)
                     .remove();
-                // Flash effect
                 group.select(".main-bubble")
                     .transition()
                     .duration(150)
@@ -846,50 +700,14 @@ const CryptoBubblesUI: React.FC = () => {
                     .duration(150)
                     .style("opacity", 0.85);
             });
-        // Update positions on tick with collision detection for visual effects
-        let tickCount = 0;
+
+        // --- Update Positions on Tick ---
         simulation.on("tick", () => {
             bubbleGroups.attr("transform", (d) => `translate(${d.x || 0}, ${d.y || 0})`);
-            
-            // Only check collisions every 5 ticks for performance
-            tickCount++;
-            if (tickCount % 5 === 0) {
-                bubbleData.forEach((nodeA, i) => {
-                    if (nodeA.x === undefined || nodeA.y === undefined) return;
-                    
-                    bubbleData.slice(i + 1).forEach((nodeB) => {
-                        if (nodeB.x === undefined || nodeB.y === undefined) return;
-                        
-                        const dx = nodeB.x - nodeA.x;
-                        const dy = nodeB.y - nodeA.y;
-                        const distance = Math.sqrt(dx * dx + dy * dy);
-                        const collisionDistance = (nodeA.radius || 30) + (nodeB.radius || 30) + 10;
-                        
-                        if (distance < collisionDistance) {
-                            // Add subtle collision glow effect
-                            const groupA = bubbleGroups.filter((d) => d.id === nodeA.id);
-                            const groupB = bubbleGroups.filter((d) => d.id === nodeB.id);
-                            
-                            groupA.select(".mid-glow")
-                                .transition()
-                                .duration(200)
-                                .style("opacity", 0.6)
-                                .transition()
-                                .duration(300)
-                                .style("opacity", 0.3);
-                                
-                            groupB.select(".mid-glow")
-                                .transition()
-                                .duration(200)
-                                .style("opacity", 0.6)
-                                .transition()
-                                .duration(300)
-                                .style("opacity", 0.3);
-                        }
-                    });
-                });
-            }
+            // Optional: Add subtle visual effect on collision if needed
+            // (The physics itself handles collisions now)
         });
+
         return () => {
             if (simulation) {
                 simulation.stop();
@@ -901,9 +719,56 @@ const CryptoBubblesUI: React.FC = () => {
         };
     }, [marketData, dimensions, loading, error, selectedCategory]);
 
+    // --- Custom Force Functions ---
+
+    // Custom force for subtle continuous movement
+    function autoMoveForce(strength = 0.05) {
+        let nodes: CryptoCoin[];
+        function force(alpha: number) {
+            const time = Date.now() * 0.001;
+            nodes.forEach((d, i) => {
+                // Gentle sinusoidal drift
+                const phaseOffset = i * 0.1;
+                const dx = Math.sin(time * 0.3 + phaseOffset) * strength;
+                const dy = Math.cos(time * 0.4 + phaseOffset * 0.7) * strength;
+
+                // Apply force (F = ma, but we apply directly to velocity)
+                if (d.fx == null) d.vx = (d.vx || 0) + dx * alpha * 10; // Scale with alpha
+                if (d.fy == null) d.vy = (d.vy || 0) + dy * alpha * 10;
+            });
+        }
+        force.initialize = (nds: CryptoCoin[]) => { nodes = nds; };
+        return force;
+    }
+
+    // Custom force for boundary repulsion
+    function boundaryForce(width: number, height: number, padding: number, strength: number) {
+        let nodes: CryptoCoin[];
+        function force(alpha: number) {
+            nodes.forEach(d => {
+                const r = (d.radius ?? 0) + padding;
+                let fx = 0, fy = 0;
+
+                // Repel from left/right edges
+                if (d.x !== undefined && d.x < r) fx += (r - d.x) * strength * alpha;
+                if (d.x !== undefined && d.x > width - r) fx -= (d.x - width + r) * strength * alpha;
+
+                // Repel from top/bottom edges
+                if (d.y !== undefined && d.y < r) fy += (r - d.y) * strength * alpha;
+                if (d.y !== undefined && d.y > height - r) fy -= (d.y - height + r) * strength * alpha;
+
+                // Apply forces if not fixed
+                if (d.fx == null && fx !== 0) d.vx = (d.vx || 0) + fx;
+                if (d.fy == null && fy !== 0) d.vy = (d.vy || 0) + fy;
+            });
+        }
+        force.initialize = (nds: CryptoCoin[]) => { nodes = nds; };
+        return force;
+    }
+
     const restartSimulation = useCallback(() => {
         if (simulationRef.current) {
-            simulationRef.current.alpha(0.3).restart();
+            simulationRef.current.alpha(0.5).restart(); // Higher alpha for a more noticeable restart
         }
     }, []);
 
@@ -916,7 +781,6 @@ const CryptoBubblesUI: React.FC = () => {
         setSearchTerm(term);
     };
 
-    // Get current UTC time in the requested format
     const getCurrentTimeUTC = () => {
         const now = new Date();
         const year = now.getUTCFullYear();
@@ -930,14 +794,12 @@ const CryptoBubblesUI: React.FC = () => {
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900">
-            {/* Add CSS for bubble animations */}
             <style jsx>{`
                 @keyframes pulse {
                     0% { opacity: 0.1; transform: scale(1); }
                     100% { opacity: 0.2; transform: scale(1.05); }
                 }
             `}</style>
-            {/* Dynamic Header */}
             <Header
                 title="CRYPTO BUBBLES"
                 subtitle="Live Market Visualization"
@@ -950,7 +812,6 @@ const CryptoBubblesUI: React.FC = () => {
                 showSearch={true}
                 showControls={true}
             />
-            {/* Main Content */}
             <div className="p-6">
                 {loading && (
                     <div className="flex items-center justify-center h-96">
@@ -1014,7 +875,6 @@ const CryptoBubblesUI: React.FC = () => {
                                 `
                             }}
                         />
-                        {/* Enhanced Instructions */}
                         <div className="absolute bottom-4 left-4 bg-black/80 backdrop-blur-md text-gray-300 text-sm px-6 py-4 rounded-2xl border border-gray-700/50 max-w-xs shadow-2xl">
                             <p className="font-bold text-blue-400 mb-2 flex items-center gap-2">
                                 ⚡ LIGHTNING-FAST Glass Bubbles
@@ -1040,7 +900,6 @@ const CryptoBubblesUI: React.FC = () => {
                                 Maximum explosive bouncing
                             </p>
                         </div>
-                        {/* Enhanced Stats */}
                         <div className="absolute top-4 left-4 bg-black/80 backdrop-blur-md text-gray-300 text-sm px-6 py-4 rounded-2xl border border-gray-700/50 shadow-2xl">
                             <div className="flex items-center gap-2 mb-2">
                                 <div className={`w-3 h-3 rounded-full animate-pulse ${selectedCategory === 'crypto' ? 'bg-gradient-to-r from-blue-400 to-cyan-400' :
@@ -1053,28 +912,10 @@ const CryptoBubblesUI: React.FC = () => {
                             </div>
                             <p className="text-gray-400 mb-1">Showing <span className="text-white font-semibold">{marketData.length}</span> bubbles</p>
                             <p className="text-xs text-gray-500">Size based on {selectedCategory === 'crypto' ? 'market cap' : 'rate & volume'}</p>
-                            {/*<p className="text-xs text-blue-400 mt-2 font-mono">User: tayyabayasmine</p>*/}
                         </div>
-                        {/* Enhanced Time Display */}
-                        {/*<div className="absolute top-4 right-4 bg-black/80 backdrop-blur-md text-gray-300 text-sm px-6 py-4 rounded-2xl border border-gray-700/50 shadow-2xl">*/}
-                        {/*    <p className="font-bold text-white mb-1 flex items-center gap-2">*/}
-                        {/*        🕒 Current Time (UTC)*/}
-                        {/*    </p>*/}
-                        {/*    <p className="font-mono text-lg text-blue-400 mb-2">{getCurrentTimeUTC()}</p>*/}
-                        {/*    <div className="flex items-center justify-between">*/}
-                        {/*        <div className="flex items-center gap-1">*/}
-                        {/*            <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>*/}
-                        {/*            <span className="text-xs text-green-400 font-medium">Live Data</span>*/}
-                        {/*        </div>*/}
-                        {/*        <div className="text-xs text-gray-500">*/}
-                        {/*            {selectedCategory === 'crypto' ? 'Market' : selectedCategory === 'forex' ? 'FX' : 'Pairs'}*/}
-                        {/*        </div>*/}
-                        {/*    </div>*/}
-                        {/*</div>*/}
                     </div>
                 )}
             </div>
-            {/* Enhanced Selected Bubble Details */}
             {selectedBubble && (
                 <div className="fixed bottom-6 right-6 bg-gray-900/95 backdrop-blur-xl border border-gray-700/50 rounded-2xl p-8 shadow-2xl max-w-sm z-50 transform transition-all duration-300 animate-in slide-in-from-right">
                     <div className="flex items-center justify-between mb-6">
@@ -1107,7 +948,6 @@ const CryptoBubblesUI: React.FC = () => {
                     </div>
                     <div className="space-y-4">
                         {selectedCategory === 'crypto' ? (
-                            // Enhanced Crypto details
                             <>
                                 <div className="flex justify-between items-center py-2 border-b border-gray-800/50">
                                     <span className="text-gray-400 font-medium">Price:</span>
@@ -1132,7 +972,6 @@ const CryptoBubblesUI: React.FC = () => {
                                 )}
                             </>
                         ) : (
-                            // Enhanced Forex details
                             <>
                                 <div className="flex justify-between items-center py-2 border-b border-gray-800/50">
                                     <span className="text-gray-400 font-medium">Current Rate:</span>
