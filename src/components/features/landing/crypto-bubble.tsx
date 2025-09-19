@@ -15,6 +15,8 @@ type CryptoCoin = {
     radius?: number;
     x?: number;
     y?: number;
+    vx?: number;
+    vy?: number;
     fx?: number | null;
     fy?: number | null;
     category?: "crypto" | "forex" | "forex-pair" | "major" | "minor" | "exotic";
