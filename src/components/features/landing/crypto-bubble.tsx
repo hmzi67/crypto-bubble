@@ -51,7 +51,7 @@ const fetchRealCryptoData = async (): Promise<CryptoCoin[]> => {
         // Using CoinGecko API - Free tier, no API key required for basic calls
         // Fetch top 25 coins by market cap
         const response = await fetch(
-            'https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=25&page=1&sparkline=false&locale=en'
+            'https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=100&page=1&sparkline=false&locale=en'
         );
 
         if (!response.ok) {
@@ -323,20 +323,43 @@ const CryptoBubblesUI: React.FC = () => {
         const bubbleData: CryptoCoin[] = marketData.map((d) => ({
             ...d,
             radius: radiusScale(d.marketCap),
-            x: width / 2 + (Math.random() - 0.5) * width * 0.7,
-            y: height / 2 + (Math.random() - 0.5) * height * 0.7,
+            x: Math.random() * width,
+            y: Math.random() * height,
             fx: null,
             fy: null,
         }));
         const simulation = d3
             .forceSimulation<CryptoCoin>(bubbleData)
-            .force("charge", d3.forceManyBody().strength(-40))
-            .force("center", d3.forceCenter(width / 2, height / 2))
-            .force("collision", d3.forceCollide<CryptoCoin>().radius((d) => d.radius! + 8).strength(0.9))
-            .force("x", d3.forceX(width / 2).strength(0.05))
-            .force("y", d3.forceY(height / 2).strength(0.05))
-            .alphaDecay(0.005)
-            .velocityDecay(0.3);
+            .force("charge", d3.forceManyBody().strength(-15))
+            .force("collision", d3.forceCollide<CryptoCoin>().radius((d) => d.radius! + 5).strength(0.7))
+            .force("boundary", () => {
+                bubbleData.forEach(d => {
+                    if (d.x !== undefined && d.y !== undefined) {
+                        // Keep bubbles within viewport bounds with padding
+                        const padding = d.radius! + 10;
+                        if (d.x < padding) d.vx = (d.vx || 0) + 0.1;
+                        if (d.x > width - padding) d.vx = (d.vx || 0) - 0.1;
+                        if (d.y < padding) d.vy = (d.vy || 0) + 0.1;
+                        if (d.y > height - padding) d.vy = (d.vy || 0) - 0.1;
+                        
+                        // Add gentle random drift for continuous movement
+                        d.vx = (d.vx || 0) + (Math.random() - 0.5) * 0.02;
+                        d.vy = (d.vy || 0) + (Math.random() - 0.5) * 0.02;
+                        
+                        // Limit maximum velocity for slow movement
+                        const maxVelocity = 0.5;
+                        if (d.vx !== undefined && Math.abs(d.vx) > maxVelocity) {
+                            d.vx = Math.sign(d.vx) * maxVelocity;
+                        }
+                        if (d.vy !== undefined && Math.abs(d.vy) > maxVelocity) {
+                            d.vy = Math.sign(d.vy) * maxVelocity;
+                        }
+                    }
+                });
+            })
+            .alphaDecay(0.001)
+            .velocityDecay(0.8)
+            .alphaMin(0.1);
         simulationRef.current = simulation;
         // Enhanced gradients and filters for ultra-glassy effect
         const defs = svg.append("defs");
@@ -573,7 +596,7 @@ const CryptoBubblesUI: React.FC = () => {
             .drag<SVGGElement, CryptoCoin>()
             .on("start", (event, d) => {
                 if (!event.active && simulationRef.current) {
-                    simulationRef.current.alphaTarget(0.3).restart();
+                    simulationRef.current.alphaTarget(0.2).restart();
                 }
                 d.fx = d.x;
                 d.fy = d.y;
@@ -598,7 +621,7 @@ const CryptoBubblesUI: React.FC = () => {
             })
             .on("end", (event, d) => {
                 if (!event.active && simulationRef.current) {
-                    simulationRef.current.alphaTarget(0);
+                    simulationRef.current.alphaTarget(0.1);
                 }
                 d.fx = null;
                 d.fy = null;
@@ -722,7 +745,7 @@ const CryptoBubblesUI: React.FC = () => {
 
     const restartSimulation = useCallback(() => {
         if (simulationRef.current) {
-            simulationRef.current.alpha(1).restart();
+            simulationRef.current.alpha(0.3).restart();
         }
     }, []);
 
@@ -836,18 +859,22 @@ const CryptoBubblesUI: React.FC = () => {
                         {/* Enhanced Instructions */}
                         <div className="absolute bottom-4 left-4 bg-black/80 backdrop-blur-md text-gray-300 text-sm px-6 py-4 rounded-2xl border border-gray-700/50 max-w-xs shadow-2xl">
                             <p className="font-bold text-blue-400 mb-2 flex items-center gap-2">
-                                🧠 Interactive Glass Bubbles
+                                🌊 Free-Floating Glass Bubbles
                             </p>
                             <p className="flex items-center gap-2 mb-1">
-                                <span className="w-2 h-2 bg-green-400 rounded-full"></span>
-                                Drag to move around
+                                <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></span>
+                                Bubbles drift slowly across screen
                             </p>
                             <p className="flex items-center gap-2 mb-1">
                                 <span className="w-2 h-2 bg-blue-400 rounded-full"></span>
-                                Click to view details
+                                Drag to reposition bubbles
+                            </p>
+                            <p className="flex items-center gap-2 mb-1">
+                                <span className="w-2 h-2 bg-purple-400 rounded-full"></span>
+                                Click for detailed info
                             </p>
                             <p className="flex items-center gap-2">
-                                <span className="w-2 h-2 bg-purple-400 rounded-full"></span>
+                                <span className="w-2 h-2 bg-yellow-400 rounded-full"></span>
                                 Hover for glass effects
                             </p>
                         </div>
