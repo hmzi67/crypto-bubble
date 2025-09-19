@@ -327,29 +327,119 @@ const CryptoBubblesUI: React.FC = () => {
             radius: radiusScale(d.marketCap),
             x: Math.random() * width,
             y: Math.random() * height,
+            vx: (Math.random() - 0.5) * 0.5, // Random initial velocity
+            vy: (Math.random() - 0.5) * 0.5, // Random initial velocity
             fx: null,
             fy: null,
         }));
         const simulation = d3
             .forceSimulation<CryptoCoin>(bubbleData)
-            .force("charge", d3.forceManyBody().strength(-15))
-            .force("collision", d3.forceCollide<CryptoCoin>().radius((d) => d.radius! + 5).strength(0.7))
+            .force("charge", d3.forceManyBody().strength(-20))
+            .force("collision", d3.forceCollide<CryptoCoin>()
+                .radius((d) => d.radius! + 8)
+                .strength(1.2)
+                .iterations(3)
+            )
+            .force("repel", () => {
+                // Enhanced collision repelling force
+                const repelStrength = 0.3;
+                for (let i = 0; i < bubbleData.length; i++) {
+                    const nodeA = bubbleData[i];
+                    if (nodeA.x === undefined || nodeA.y === undefined) continue;
+                    
+                    for (let j = i + 1; j < bubbleData.length; j++) {
+                        const nodeB = bubbleData[j];
+                        if (nodeB.x === undefined || nodeB.y === undefined) continue;
+                        
+                        const dx = nodeB.x - nodeA.x;
+                        const dy = nodeB.y - nodeA.y;
+                        const distance = Math.sqrt(dx * dx + dy * dy);
+                        const minDistance = nodeA.radius! + nodeB.radius! + 15;
+                        
+                        if (distance < minDistance && distance > 0) {
+                            // Calculate repelling force
+                            const force = (minDistance - distance) / distance * repelStrength;
+                            const fx = dx * force;
+                            const fy = dy * force;
+                            
+                            // Apply repelling forces with momentum
+                            nodeB.vx = (nodeB.vx || 0) + fx;
+                            nodeB.vy = (nodeB.vy || 0) + fy;
+                            nodeA.vx = (nodeA.vx || 0) - fx;
+                            nodeA.vy = (nodeA.vy || 0) - fy;
+                        }
+                    }
+                }
+            })
+            .force("autoMove", () => {
+                // Automatic continuous movement force
+                bubbleData.forEach((d, i) => {
+                    if (d.x !== undefined && d.y !== undefined) {
+                        // Add stronger random drift for automatic movement
+                        const driftStrength = 0.08;
+                        d.vx = (d.vx || 0) + (Math.random() - 0.5) * driftStrength;
+                        d.vy = (d.vy || 0) + (Math.random() - 0.5) * driftStrength;
+                        
+                        // Add periodic direction changes for more dynamic movement
+                        const time = Date.now() * 0.001; // Convert to seconds
+                        const phaseOffset = i * 0.5; // Different phase for each bubble
+                        
+                        // Sinusoidal forces for smooth directional changes
+                        const directionChangeX = Math.sin(time * 0.3 + phaseOffset) * 0.02;
+                        const directionChangeY = Math.cos(time * 0.4 + phaseOffset * 1.2) * 0.02;
+                        
+                        d.vx = (d.vx || 0) + directionChangeX;
+                        d.vy = (d.vy || 0) + directionChangeY;
+                        
+                        // Add occasional velocity boosts to prevent stagnation
+                        if (Math.random() < 0.001) { // 0.1% chance per tick
+                            const boostAngle = Math.random() * Math.PI * 2;
+                            const boostStrength = 0.3;
+                            d.vx = (d.vx || 0) + Math.cos(boostAngle) * boostStrength;
+                            d.vy = (d.vy || 0) + Math.sin(boostAngle) * boostStrength;
+                        }
+                        
+                        // Ensure minimum velocity to prevent complete stops
+                        const currentSpeed = Math.sqrt((d.vx || 0) ** 2 + (d.vy || 0) ** 2);
+                        const minSpeed = 0.1;
+                        if (currentSpeed < minSpeed) {
+                            const angle = Math.random() * Math.PI * 2;
+                            d.vx = Math.cos(angle) * minSpeed;
+                            d.vy = Math.sin(angle) * minSpeed;
+                        }
+                    }
+                });
+            })
             .force("boundary", () => {
                 bubbleData.forEach(d => {
                     if (d.x !== undefined && d.y !== undefined) {
-                        // Keep bubbles within viewport bounds with padding
-                        const padding = d.radius! + 10;
-                        if (d.x < padding) d.vx = (d.vx || 0) + 0.1;
-                        if (d.x > width - padding) d.vx = (d.vx || 0) - 0.1;
-                        if (d.y < padding) d.vy = (d.vy || 0) + 0.1;
-                        if (d.y > height - padding) d.vy = (d.vy || 0) - 0.1;
+                        // Enhanced boundary collision with bouncing
+                        const padding = d.radius! + 5;
+                        const bounceForce = 0.6; // Increased bounce force
                         
-                        // Add gentle random drift for continuous movement
-                        d.vx = (d.vx || 0) + (Math.random() - 0.5) * 0.02;
-                        d.vy = (d.vy || 0) + (Math.random() - 0.5) * 0.02;
+                        if (d.x < padding) {
+                            d.x = padding;
+                            d.vx = Math.abs(d.vx || 0) + bounceForce; // Bounce off left wall
+                        }
+                        if (d.x > width - padding) {
+                            d.x = width - padding;
+                            d.vx = -Math.abs(d.vx || 0) - bounceForce; // Bounce off right wall
+                        }
+                        if (d.y < padding) {
+                            d.y = padding;
+                            d.vy = Math.abs(d.vy || 0) + bounceForce; // Bounce off top wall
+                        }
+                        if (d.y > height - padding) {
+                            d.y = height - padding;
+                            d.vy = -Math.abs(d.vy || 0) - bounceForce; // Bounce off bottom wall
+                        }
                         
-                        // Limit maximum velocity for slow movement
-                        const maxVelocity = 0.5;
+                        // Apply gentle friction for realistic movement
+                        d.vx = (d.vx || 0) * 0.995; // Reduced friction for more movement
+                        d.vy = (d.vy || 0) * 0.995;
+                        
+                        // Limit maximum velocity for controlled movement
+                        const maxVelocity = 2.0; // Increased max velocity
                         if (d.vx !== undefined && Math.abs(d.vx) > maxVelocity) {
                             d.vx = Math.sign(d.vx) * maxVelocity;
                         }
@@ -359,9 +449,9 @@ const CryptoBubblesUI: React.FC = () => {
                     }
                 });
             })
-            .alphaDecay(0.001)
-            .velocityDecay(0.8)
-            .alphaMin(0.1);
+            .alphaDecay(0.0001) // Much slower decay to maintain continuous motion
+            .velocityDecay(0.92) // Reduced velocity decay for sustained movement
+            .alphaMin(0.3); // Higher minimum alpha to keep simulation active
         simulationRef.current = simulation;
         // Enhanced gradients and filters for ultra-glassy effect
         const defs = svg.append("defs");
@@ -736,9 +826,45 @@ const CryptoBubblesUI: React.FC = () => {
                     .duration(150)
                     .style("opacity", 0.85);
             });
-        // Update positions on tick
+        // Update positions on tick with collision detection for visual effects
         simulation.on("tick", () => {
             bubbleGroups.attr("transform", (d) => `translate(${d.x}, ${d.y})`);
+            
+            // Check for collisions and add visual effects
+            bubbleData.forEach((nodeA, i) => {
+                if (nodeA.x === undefined || nodeA.y === undefined) return;
+                
+                bubbleData.slice(i + 1).forEach((nodeB) => {
+                    if (nodeB.x === undefined || nodeB.y === undefined) return;
+                    
+                    const dx = nodeB.x - nodeA.x;
+                    const dy = nodeB.y - nodeA.y;
+                    const distance = Math.sqrt(dx * dx + dy * dy);
+                    const collisionDistance = nodeA.radius! + nodeB.radius! + 10;
+                    
+                    if (distance < collisionDistance) {
+                        // Add subtle collision glow effect
+                        const groupA = bubbleGroups.filter((d) => d.id === nodeA.id);
+                        const groupB = bubbleGroups.filter((d) => d.id === nodeB.id);
+                        
+                        groupA.select(".mid-glow")
+                            .transition()
+                            .duration(200)
+                            .style("opacity", 0.6)
+                            .transition()
+                            .duration(300)
+                            .style("opacity", 0.3);
+                            
+                        groupB.select(".mid-glow")
+                            .transition()
+                            .duration(200)
+                            .style("opacity", 0.6)
+                            .transition()
+                            .duration(300)
+                            .style("opacity", 0.3);
+                    }
+                });
+            });
         });
         return () => {
             simulation.stop();
@@ -861,15 +987,19 @@ const CryptoBubblesUI: React.FC = () => {
                         {/* Enhanced Instructions */}
                         <div className="absolute bottom-4 left-4 bg-black/80 backdrop-blur-md text-gray-300 text-sm px-6 py-4 rounded-2xl border border-gray-700/50 max-w-xs shadow-2xl">
                             <p className="font-bold text-blue-400 mb-2 flex items-center gap-2">
-                                🌊 Free-Floating Glass Bubbles
+                                🌊 Autonomous Glass Bubbles
                             </p>
                             <p className="flex items-center gap-2 mb-1">
                                 <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></span>
-                                Bubbles drift slowly across screen
+                                Bubbles move automatically
                             </p>
                             <p className="flex items-center gap-2 mb-1">
-                                <span className="w-2 h-2 bg-blue-400 rounded-full"></span>
-                                Drag to reposition bubbles
+                                <span className="w-2 h-2 bg-orange-400 rounded-full animate-bounce"></span>
+                                Continuous collision & repelling
+                            </p>
+                            <p className="flex items-center gap-2 mb-1">
+                                <span className="w-2 h-2 bg-cyan-400 rounded-full animate-spin"></span>
+                                Dynamic direction changes
                             </p>
                             <p className="flex items-center gap-2 mb-1">
                                 <span className="w-2 h-2 bg-purple-400 rounded-full"></span>
@@ -877,7 +1007,7 @@ const CryptoBubblesUI: React.FC = () => {
                             </p>
                             <p className="flex items-center gap-2">
                                 <span className="w-2 h-2 bg-yellow-400 rounded-full"></span>
-                                Hover for glass effects
+                                Elastic wall bouncing
                             </p>
                         </div>
                         {/* Enhanced Stats */}
