@@ -58,9 +58,14 @@ const fetchRealCryptoData = async (): Promise<CryptoCoin[]> => {
 
         if (!response.ok) {
             console.error(`Crypto API error: ${response.status} ${response.statusText}`);
+            throw new Error(`Failed to fetch crypto data: ${response.status}`);
         }
 
         const data: CoinGeckoCoin[] = await response.json();
+        
+        if (!data || !Array.isArray(data)) {
+            throw new Error('Invalid crypto data format received');
+        }
 
         return data.map((coin) => ({
             id: coin.id,
@@ -90,9 +95,14 @@ const fetchRealForexData = async (): Promise<CryptoCoin[]> => {
 
         if (!response.ok) {
             console.error(`Forex API error: ${response.status} ${response.statusText}`);
+            throw new Error(`Failed to fetch forex data: ${response.status}`);
         }
 
         const data: ExchangeRateResponse = await response.json();
+        
+        if (!data || !data.rates) {
+            throw new Error('Invalid forex data format received');
+        }
         const rates = data.rates;
 
         // Define currencies to show and their importance/region for mock data purposes
@@ -158,9 +168,14 @@ const fetchRealForexPairsData = async (): Promise<CryptoCoin[]> => {
 
         if (!response.ok) {
             console.error(`Forex Pairs API error: ${response.status} ${response.statusText}`);
+            throw new Error(`Failed to fetch forex pairs data: ${response.status}`);
         }
 
         const data: ExchangeRateResponse = await response.json();
+        
+        if (!data || !data.rates) {
+            throw new Error('Invalid forex pairs data format received');
+        }
         const rates = data.rates;
 
         // Define pairs to show
@@ -327,22 +342,22 @@ const CryptoBubblesUI: React.FC = () => {
             radius: radiusScale(d.marketCap),
             x: Math.random() * width,
             y: Math.random() * height,
-            vx: (Math.random() - 0.5) * 0.5, // Random initial velocity
-            vy: (Math.random() - 0.5) * 0.5, // Random initial velocity
+            vx: (Math.random() - 0.5) * 2.0, // Slower initial velocity
+            vy: (Math.random() - 0.5) * 2.0, // Slower initial velocity
             fx: null,
             fy: null,
         }));
         const simulation = d3
             .forceSimulation<CryptoCoin>(bubbleData)
-            .force("charge", d3.forceManyBody().strength(-20))
+            .force("charge", d3.forceManyBody().strength(-50)) // Reduced charge force
             .force("collision", d3.forceCollide<CryptoCoin>()
-                .radius((d) => d.radius! + 8)
-                .strength(1.2)
-                .iterations(3)
+                .radius((d) => d.radius! + 10)
+                .strength(1.0) // Reduced collision strength
+                .iterations(2)
             )
             .force("repel", () => {
-                // Enhanced collision repelling force
-                const repelStrength = 0.3;
+                // Slower collision repelling force
+                const repelStrength = 1.0; // Reduced repelling force
                 for (let i = 0; i < bubbleData.length; i++) {
                     const nodeA = bubbleData[i];
                     if (nodeA.x === undefined || nodeA.y === undefined) continue;
@@ -354,15 +369,15 @@ const CryptoBubblesUI: React.FC = () => {
                         const dx = nodeB.x - nodeA.x;
                         const dy = nodeB.y - nodeA.y;
                         const distance = Math.sqrt(dx * dx + dy * dy);
-                        const minDistance = nodeA.radius! + nodeB.radius! + 15;
+                        const minDistance = nodeA.radius! + nodeB.radius! + 10;
                         
                         if (distance < minDistance && distance > 0) {
-                            // Calculate repelling force
+                            // Calculate slower repelling force
                             const force = (minDistance - distance) / distance * repelStrength;
                             const fx = dx * force;
                             const fy = dy * force;
                             
-                            // Apply repelling forces with momentum
+                            // Apply slower repelling forces
                             nodeB.vx = (nodeB.vx || 0) + fx;
                             nodeB.vy = (nodeB.vy || 0) + fy;
                             nodeA.vx = (nodeA.vx || 0) - fx;
@@ -372,36 +387,36 @@ const CryptoBubblesUI: React.FC = () => {
                 }
             })
             .force("autoMove", () => {
-                // Automatic continuous movement force
+                // Slower speed automatic movement force
                 bubbleData.forEach((d, i) => {
                     if (d.x !== undefined && d.y !== undefined) {
-                        // Add stronger random drift for automatic movement
-                        const driftStrength = 0.08;
+                        // Slower random drift for movement
+                        const driftStrength = 0.5; // Reduced drift
                         d.vx = (d.vx || 0) + (Math.random() - 0.5) * driftStrength;
                         d.vy = (d.vy || 0) + (Math.random() - 0.5) * driftStrength;
                         
-                        // Add periodic direction changes for more dynamic movement
-                        const time = Date.now() * 0.001; // Convert to seconds
-                        const phaseOffset = i * 0.5; // Different phase for each bubble
+                        // Add slower periodic direction changes
+                        const time = Date.now() * 0.001; // Slower time multiplier
+                        const phaseOffset = i * 0.3;
                         
-                        // Sinusoidal forces for smooth directional changes
-                        const directionChangeX = Math.sin(time * 0.3 + phaseOffset) * 0.02;
-                        const directionChangeY = Math.cos(time * 0.4 + phaseOffset * 1.2) * 0.02;
+                        // Slower sinusoidal forces for chaotic movement
+                        const directionChangeX = Math.sin(time * 0.5 + phaseOffset) * 0.5;
+                        const directionChangeY = Math.cos(time * 0.6 + phaseOffset * 0.5) * 0.5;
                         
                         d.vx = (d.vx || 0) + directionChangeX;
                         d.vy = (d.vy || 0) + directionChangeY;
                         
-                        // Add occasional velocity boosts to prevent stagnation
-                        if (Math.random() < 0.001) { // 0.1% chance per tick
+                        // Slower velocity boosts
+                        if (Math.random() < 0.01) { // 1% chance per tick
                             const boostAngle = Math.random() * Math.PI * 2;
-                            const boostStrength = 0.3;
+                            const boostStrength = 1.0; // Reduced boost
                             d.vx = (d.vx || 0) + Math.cos(boostAngle) * boostStrength;
                             d.vy = (d.vy || 0) + Math.sin(boostAngle) * boostStrength;
                         }
                         
-                        // Ensure minimum velocity to prevent complete stops
+                        // Slower minimum speed for constant movement
                         const currentSpeed = Math.sqrt((d.vx || 0) ** 2 + (d.vy || 0) ** 2);
-                        const minSpeed = 0.1;
+                        const minSpeed = 0.5; // Reduced minimum speed
                         if (currentSpeed < minSpeed) {
                             const angle = Math.random() * Math.PI * 2;
                             d.vx = Math.cos(angle) * minSpeed;
@@ -413,33 +428,33 @@ const CryptoBubblesUI: React.FC = () => {
             .force("boundary", () => {
                 bubbleData.forEach(d => {
                     if (d.x !== undefined && d.y !== undefined) {
-                        // Enhanced boundary collision with bouncing
-                        const padding = d.radius! + 5;
-                        const bounceForce = 0.6; // Increased bounce force
+                        // Slower boundary collision
+                        const padding = d.radius! + 3;
+                        const bounceForce = 1.0; // Reduced bounce force
                         
                         if (d.x < padding) {
                             d.x = padding;
-                            d.vx = Math.abs(d.vx || 0) + bounceForce; // Bounce off left wall
+                            d.vx = Math.abs(d.vx || 0) + bounceForce; // Slower bounce off left wall
                         }
                         if (d.x > width - padding) {
                             d.x = width - padding;
-                            d.vx = -Math.abs(d.vx || 0) - bounceForce; // Bounce off right wall
+                            d.vx = -Math.abs(d.vx || 0) - bounceForce; // Slower bounce off right wall
                         }
                         if (d.y < padding) {
                             d.y = padding;
-                            d.vy = Math.abs(d.vy || 0) + bounceForce; // Bounce off top wall
+                            d.vy = Math.abs(d.vy || 0) + bounceForce; // Slower bounce off top wall
                         }
                         if (d.y > height - padding) {
                             d.y = height - padding;
-                            d.vy = -Math.abs(d.vy || 0) - bounceForce; // Bounce off bottom wall
+                            d.vy = -Math.abs(d.vy || 0) - bounceForce; // Slower bounce off bottom wall
                         }
                         
-                        // Apply gentle friction for realistic movement
-                        d.vx = (d.vx || 0) * 0.995; // Reduced friction for more movement
-                        d.vy = (d.vy || 0) * 0.995;
+                        // Some friction for speed retention
+                        d.vx = (d.vx || 0) * 0.99; // A bit of friction
+                        d.vy = (d.vy || 0) * 0.99;
                         
-                        // Limit maximum velocity for controlled movement
-                        const maxVelocity = 2.0; // Increased max velocity
+                        // Slower possible velocity for movement
+                        const maxVelocity = 5.0; // Reduced maximum velocity
                         if (d.vx !== undefined && Math.abs(d.vx) > maxVelocity) {
                             d.vx = Math.sign(d.vx) * maxVelocity;
                         }
@@ -449,9 +464,9 @@ const CryptoBubblesUI: React.FC = () => {
                     }
                 });
             })
-            .alphaDecay(0.0001) // Much slower decay to maintain continuous motion
-            .velocityDecay(0.92) // Reduced velocity decay for sustained movement
-            .alphaMin(0.3); // Higher minimum alpha to keep simulation active
+            .alphaDecay(0.0228) // default alpha decay
+            .velocityDecay(0.4) // default velocity decay
+            .alphaMin(0.001); // default alpha min
         simulationRef.current = simulation;
         // Enhanced gradients and filters for ultra-glassy effect
         const defs = svg.append("defs");
@@ -676,67 +691,70 @@ const CryptoBubblesUI: React.FC = () => {
             .style("font-weight", "800")
             .style("font-size", (d) => `${Math.min(d.radius! * 0.20, 13)}px`)
             .style("fill", (d) => (d.change24h > 0 ? "#22c55e" : "#ef4444"))
-            .style("text-shadow", `
+            .style("text-shadow", (d) => `
                 0 0 8px rgba(0,0,0,0.9),
                 0 1px 3px rgba(0,0,0,0.7),
-                0 0 15px ${(d: CryptoCoin) => d.change24h > 0 ? "rgba(34, 197, 94, 0.3)" : "rgba(239, 68, 68, 0.3)"}
+                0 0 15px ${d.change24h > 0 ? "rgba(34, 197, 94, 0.3)" : "rgba(239, 68, 68, 0.3)"}
             `)
             .style("pointer-events", "none")
             .text((d) => `${d.change24h > 0 ? "+" : ""}${d.change24h.toFixed(2)}%`);
         // Enhanced drag behavior with visual feedback
         const drag = d3
             .drag<SVGGElement, CryptoCoin>()
-            .on("start", (event, d) => {
+            .on("start", function(event, d) {
                 if (!event.active && simulationRef.current) {
                     simulationRef.current.alphaTarget(0.2).restart();
                 }
                 d.fx = d.x;
                 d.fy = d.y;
-                const group = d3.select(event.sourceEvent.target.parentNode);
+                const group = d3.select(this);
                 group.style("cursor", "grabbing");
                 // Enhanced drag feedback
                 group.select(".main-bubble")
                     .transition()
                     .duration(150)
-                    .attr("r", d.radius! * 1.1)
+                    .attr("r", (d.radius || 30) * 1.1)
                     .style("opacity", 1)
                     .attr("stroke-width", 4);
                 group.select(".atmospheric-glow")
                     .transition()
                     .duration(150)
-                    .attr("r", d.radius! + 25)
+                    .attr("r", (d.radius || 30) + 25)
                     .style("opacity", 0.3);
             })
-            .on("drag", (event, d) => {
+            .on("drag", function(event, d) {
                 d.fx = event.x;
                 d.fy = event.y;
             })
-            .on("end", (event, d) => {
+            .on("end", function(event, d) {
                 if (!event.active && simulationRef.current) {
                     simulationRef.current.alphaTarget(0.1);
                 }
                 d.fx = null;
                 d.fy = null;
-                const group = d3.select(event.sourceEvent.target.parentNode);
+                const group = d3.select(this);
                 group.style("cursor", "grab");
                 // Reset drag feedback
                 group.select(".main-bubble")
                     .transition()
                     .duration(300)
-                    .attr("r", d.radius!)
+                    .attr("r", d.radius || 30)
                     .style("opacity", 0.85)
                     .attr("stroke-width", 2.5);
                 group.select(".atmospheric-glow")
                     .transition()
                     .duration(300)
-                    .attr("r", d.radius! + 15)
+                    .attr("r", (d.radius || 30) + 15)
                     .style("opacity", 0.1);
             });
-        bubbleGroups.call(drag);
+        bubbleGroups.each(function(d) {
+            d3.select(this).call(drag);
+        });
         // Enhanced mouse interactions
         bubbleGroups
             .on("mouseenter", function (_event, d) {
                 const group = d3.select(this);
+                const radius = d.radius || 30;
                 // Enhanced hover effects
                 group.select(".main-bubble")
                     .transition()
@@ -748,19 +766,19 @@ const CryptoBubblesUI: React.FC = () => {
                     .transition()
                     .duration(200)
                     .style("opacity", 0.5)
-                    .attr("r", d.radius! + 12)
+                    .attr("r", radius + 12)
                     .attr("stroke-width", 4);
                 group.select(".atmospheric-glow")
                     .transition()
                     .duration(200)
                     .style("opacity", 0.2)
-                    .attr("r", d.radius! + 20);
+                    .attr("r", radius + 20);
                 group.select(".primary-highlight")
                     .transition()
                     .duration(200)
                     .style("opacity", 1)
-                    .attr("rx", d.radius! * 0.5)
-                    .attr("ry", d.radius! * 0.3);
+                    .attr("rx", radius * 0.5)
+                    .attr("ry", radius * 0.3);
                 // Text glow on hover
                 group.selectAll("text")
                     .transition()
@@ -769,6 +787,7 @@ const CryptoBubblesUI: React.FC = () => {
             })
             .on("mouseleave", function (_event, d) {
                 const group = d3.select(this);
+                const radius = d.radius || 30;
                 // Reset hover effects
                 group.select(".main-bubble")
                     .transition()
@@ -780,19 +799,19 @@ const CryptoBubblesUI: React.FC = () => {
                     .transition()
                     .duration(300)
                     .style("opacity", 0.3)
-                    .attr("r", d.radius! + 8)
+                    .attr("r", radius + 8)
                     .attr("stroke-width", 3);
                 group.select(".atmospheric-glow")
                     .transition()
                     .duration(300)
                     .style("opacity", 0.1)
-                    .attr("r", d.radius! + 15);
+                    .attr("r", radius + 15);
                 group.select(".primary-highlight")
                     .transition()
                     .duration(300)
                     .style("opacity", 0.9)
-                    .attr("rx", d.radius! * 0.45)
-                    .attr("ry", d.radius! * 0.25);
+                    .attr("rx", radius * 0.45)
+                    .attr("ry", radius * 0.25);
                 group.selectAll("text")
                     .transition()
                     .duration(300)
@@ -802,6 +821,7 @@ const CryptoBubblesUI: React.FC = () => {
                 setSelectedBubble(d);
                 // Enhanced click ripple effect
                 const group = d3.select(this);
+                const radius = d.radius || 30;
                 const clickRipple = group
                     .append("circle")
                     .attr("r", 0)
@@ -813,7 +833,7 @@ const CryptoBubblesUI: React.FC = () => {
                     .transition()
                     .duration(800)
                     .ease(d3.easeCircleOut)
-                    .attr("r", d.radius! + 40)
+                    .attr("r", radius + 40)
                     .style("opacity", 0)
                     .style("stroke-width", 1)
                     .remove();
@@ -827,47 +847,57 @@ const CryptoBubblesUI: React.FC = () => {
                     .style("opacity", 0.85);
             });
         // Update positions on tick with collision detection for visual effects
+        let tickCount = 0;
         simulation.on("tick", () => {
-            bubbleGroups.attr("transform", (d) => `translate(${d.x}, ${d.y})`);
+            bubbleGroups.attr("transform", (d) => `translate(${d.x || 0}, ${d.y || 0})`);
             
-            // Check for collisions and add visual effects
-            bubbleData.forEach((nodeA, i) => {
-                if (nodeA.x === undefined || nodeA.y === undefined) return;
-                
-                bubbleData.slice(i + 1).forEach((nodeB) => {
-                    if (nodeB.x === undefined || nodeB.y === undefined) return;
+            // Only check collisions every 5 ticks for performance
+            tickCount++;
+            if (tickCount % 5 === 0) {
+                bubbleData.forEach((nodeA, i) => {
+                    if (nodeA.x === undefined || nodeA.y === undefined) return;
                     
-                    const dx = nodeB.x - nodeA.x;
-                    const dy = nodeB.y - nodeA.y;
-                    const distance = Math.sqrt(dx * dx + dy * dy);
-                    const collisionDistance = nodeA.radius! + nodeB.radius! + 10;
-                    
-                    if (distance < collisionDistance) {
-                        // Add subtle collision glow effect
-                        const groupA = bubbleGroups.filter((d) => d.id === nodeA.id);
-                        const groupB = bubbleGroups.filter((d) => d.id === nodeB.id);
+                    bubbleData.slice(i + 1).forEach((nodeB) => {
+                        if (nodeB.x === undefined || nodeB.y === undefined) return;
                         
-                        groupA.select(".mid-glow")
-                            .transition()
-                            .duration(200)
-                            .style("opacity", 0.6)
-                            .transition()
-                            .duration(300)
-                            .style("opacity", 0.3);
+                        const dx = nodeB.x - nodeA.x;
+                        const dy = nodeB.y - nodeA.y;
+                        const distance = Math.sqrt(dx * dx + dy * dy);
+                        const collisionDistance = (nodeA.radius || 30) + (nodeB.radius || 30) + 10;
+                        
+                        if (distance < collisionDistance) {
+                            // Add subtle collision glow effect
+                            const groupA = bubbleGroups.filter((d) => d.id === nodeA.id);
+                            const groupB = bubbleGroups.filter((d) => d.id === nodeB.id);
                             
-                        groupB.select(".mid-glow")
-                            .transition()
-                            .duration(200)
-                            .style("opacity", 0.6)
-                            .transition()
-                            .duration(300)
-                            .style("opacity", 0.3);
-                    }
+                            groupA.select(".mid-glow")
+                                .transition()
+                                .duration(200)
+                                .style("opacity", 0.6)
+                                .transition()
+                                .duration(300)
+                                .style("opacity", 0.3);
+                                
+                            groupB.select(".mid-glow")
+                                .transition()
+                                .duration(200)
+                                .style("opacity", 0.6)
+                                .transition()
+                                .duration(300)
+                                .style("opacity", 0.3);
+                        }
+                    });
                 });
-            });
+            }
         });
         return () => {
-            simulation.stop();
+            if (simulation) {
+                simulation.stop();
+            }
+            if (simulationRef.current) {
+                simulationRef.current.stop();
+                simulationRef.current = null;
+            }
         };
     }, [marketData, dimensions, loading, error, selectedCategory]);
 
@@ -987,19 +1017,19 @@ const CryptoBubblesUI: React.FC = () => {
                         {/* Enhanced Instructions */}
                         <div className="absolute bottom-4 left-4 bg-black/80 backdrop-blur-md text-gray-300 text-sm px-6 py-4 rounded-2xl border border-gray-700/50 max-w-xs shadow-2xl">
                             <p className="font-bold text-blue-400 mb-2 flex items-center gap-2">
-                                🌊 Autonomous Glass Bubbles
+                                ⚡ LIGHTNING-FAST Glass Bubbles
                             </p>
                             <p className="flex items-center gap-2 mb-1">
                                 <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></span>
-                                Bubbles move automatically
+                                Bubbles streak like lightning
                             </p>
                             <p className="flex items-center gap-2 mb-1">
                                 <span className="w-2 h-2 bg-orange-400 rounded-full animate-bounce"></span>
-                                Continuous collision & repelling
+                                Explosive maximum collisions
                             </p>
                             <p className="flex items-center gap-2 mb-1">
                                 <span className="w-2 h-2 bg-cyan-400 rounded-full animate-spin"></span>
-                                Dynamic direction changes
+                                Chaotic direction changes
                             </p>
                             <p className="flex items-center gap-2 mb-1">
                                 <span className="w-2 h-2 bg-purple-400 rounded-full"></span>
@@ -1007,7 +1037,7 @@ const CryptoBubblesUI: React.FC = () => {
                             </p>
                             <p className="flex items-center gap-2">
                                 <span className="w-2 h-2 bg-yellow-400 rounded-full"></span>
-                                Elastic wall bouncing
+                                Maximum explosive bouncing
                             </p>
                         </div>
                         {/* Enhanced Stats */}
