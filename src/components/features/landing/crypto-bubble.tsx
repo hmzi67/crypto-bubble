@@ -53,11 +53,12 @@ const fetchRealCryptoData = async (): Promise<CryptoCoin[]> => {
         );
         if (!response.ok) {
             console.error(`Crypto API error: ${response.status} ${response.statusText}`);
-            throw new Error(`Failed to fetch crypto  ${response.status}`);
+            return [];
         }
         const data: CoinGeckoCoin[] = await response.json();
         if (!data || !Array.isArray(data)) {
-            throw new Error('Invalid crypto data format received');
+            console.error('Invalid crypto data format received');
+            return [];
         }
         return data.map((coin) => ({
             id: coin.id,
@@ -82,11 +83,12 @@ const fetchRealForexData = async (): Promise<CryptoCoin[]> => {
         const response = await fetch('https://api.exchangerate-api.com/v4/latest/USD');
         if (!response.ok) {
             console.error(`Forex API error: ${response.status} ${response.statusText}`);
-            throw new Error(`Failed to fetch forex data: ${response.status}`);
+            return [];
         }
         const data: ExchangeRateResponse = await response.json();
         if (!data || !data.rates) {
-            throw new Error('Invalid forex data format received');
+            console.error('Invalid forex data format received');
+            return [];
         }
         const rates = data.rates;
         const currenciesToShow = [
@@ -143,11 +145,12 @@ const fetchRealForexPairsData = async (): Promise<CryptoCoin[]> => {
         const response = await fetch('https://api.exchangerate-api.com/v4/latest/USD');
         if (!response.ok) {
             console.error(`Forex Pairs API error: ${response.status} ${response.statusText}`);
-            throw new Error(`Failed to fetch forex pairs data: ${response.status}`);
+            return [];
         }
         const data: ExchangeRateResponse = await response.json();
         if (!data || !data.rates) {
-            throw new Error('Invalid forex pairs data format received');
+            console.error('Invalid forex pairs data format received');
+            return [];
         }
         const rates = data.rates;
         const pairsToShow = [
@@ -224,7 +227,6 @@ const CryptoBubblesUI: React.FC = () => {
     const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
-        let isMounted = true;
         const fetchData = async () => {
             setLoading(true);
             setError(null);
@@ -260,9 +262,6 @@ const CryptoBubblesUI: React.FC = () => {
             }
         };
         void fetchData();
-        return () => {
-            isMounted = false;
-        };
     }, [searchTerm, selectedCategory]);
 
     useEffect(() => {
@@ -286,7 +285,6 @@ const CryptoBubblesUI: React.FC = () => {
         const { width, height } = dimensions;
         const maxValue = d3.max(marketData, (d) => d.marketCap) ?? 1;
         const minValue = d3.min(marketData, (d) => d.marketCap) ?? 0;
-
         const radiusScale = d3.scalePow()
             .exponent(0.6)
             .domain([minValue, maxValue])
@@ -329,35 +327,42 @@ const CryptoBubblesUI: React.FC = () => {
 
         simulationRef.current = simulation;
 
-        // --- Gradients and Filters (Remain largely the same) ---
+        // --- Gradients and Filters (Enhanced) ---
         const defs = svg.append("defs");
 
+        // --- Enhanced Glass Gradients ---
         const createGlassGradient = (id: string, primaryColor: string, secondaryColor: string) => {
             const gradient = defs.append("radialGradient")
                 .attr("id", id)
                 .attr("cx", "25%")
                 .attr("cy", "20%")
                 .attr("r", "80%");
-            gradient.append("stop").attr("offset", "0%").attr("stop-color", "rgba(255, 255, 255, 0.9)").attr("stop-opacity", 0.6);
-            gradient.append("stop").attr("offset", "15%").attr("stop-color", "rgba(255, 255, 255, 0.7)").attr("stop-opacity", 0.4);
-            gradient.append("stop").attr("offset", "40%").attr("stop-color", primaryColor).attr("stop-opacity", 0.7);
-            gradient.append("stop").attr("offset", "70%").attr("stop-color", secondaryColor).attr("stop-opacity", 0.6);
-            gradient.append("stop").attr("offset", "100%").attr("stop-color", secondaryColor).attr("stop-opacity", 0.8);
+
+            // More complex gradient stops for richer refraction
+            gradient.append("stop").attr("offset", "0%").attr("stop-color", "rgba(255, 255, 255, 0.95)").attr("stop-opacity", 0.7);
+            gradient.append("stop").attr("offset", "10%").attr("stop-color", "rgba(255, 255, 255, 0.85)").attr("stop-opacity", 0.5);
+            gradient.append("stop").attr("offset", "25%").attr("stop-color", "rgba(255, 255, 255, 0.75)").attr("stop-opacity", 0.3);
+            gradient.append("stop").attr("offset", "45%").attr("stop-color", primaryColor).attr("stop-opacity", 0.6);
+            gradient.append("stop").attr("offset", "65%").attr("stop-color", secondaryColor).attr("stop-opacity", 0.5);
+            gradient.append("stop").attr("offset", "85%").attr("stop-color", secondaryColor).attr("stop-opacity", 0.7);
+            gradient.append("stop").attr("offset", "100%").attr("stop-color", "rgba(0, 0, 0, 0.1)").attr("stop-opacity", 0.9);
         };
 
-        createGlassGradient("glass-positive", "rgba(34, 197, 94, 0.8)", "rgba(16, 185, 129, 0.9)");
-        createGlassGradient("glass-negative", "rgba(239, 68, 68, 0.8)", "rgba(220, 38, 38, 0.9)");
-        createGlassGradient("glass-forex-major", "rgba(16, 185, 129, 0.8)", "rgba(5, 150, 105, 0.9)");
-        createGlassGradient("glass-forex-minor", "rgba(59, 130, 246, 0.8)", "rgba(37, 99, 235, 0.9)");
-        createGlassGradient("glass-forex-exotic", "rgba(147, 51, 234, 0.8)", "rgba(126, 34, 206, 0.9)");
-        createGlassGradient("glass-forex-pair", "rgba(245, 158, 11, 0.8)", "rgba(217, 119, 6, 0.9)");
+        createGlassGradient("glass-positive", "rgba(34, 197, 94, 0.85)", "rgba(16, 185, 129, 0.95)");
+        createGlassGradient("glass-negative", "rgba(239, 68, 68, 0.85)", "rgba(220, 38, 38, 0.95)");
+        createGlassGradient("glass-forex-major", "rgba(16, 185, 129, 0.85)", "rgba(5, 150, 105, 0.95)");
+        createGlassGradient("glass-forex-minor", "rgba(59, 130, 246, 0.85)", "rgba(37, 99, 235, 0.95)");
+        createGlassGradient("glass-forex-exotic", "rgba(147, 51, 234, 0.85)", "rgba(126, 34, 206, 0.95)");
+        createGlassGradient("glass-forex-pair", "rgba(245, 158, 11, 0.85)", "rgba(217, 119, 6, 0.95)");
 
+        // --- Enhanced Glow Filter ---
         const glowFilter = defs.append("filter")
             .attr("id", "enhanced-glow")
             .attr("x", "-100%")
             .attr("y", "-100%")
             .attr("width", "300%")
             .attr("height", "300%");
+
         glowFilter.append("feGaussianBlur").attr("stdDeviation", "4").attr("result", "coloredBlur");
         glowFilter.append("feColorMatrix")
             .attr("type", "matrix")
@@ -367,12 +372,14 @@ const CryptoBubblesUI: React.FC = () => {
         feMerge.append("feMergeNode").attr("in", "glowColor");
         feMerge.append("feMergeNode").attr("in", "SourceGraphic");
 
+        // --- Reflection Filter (Remains the same) ---
         const reflectionFilter = defs.append("filter")
             .attr("id", "glass-reflection")
             .attr("x", "-50%")
             .attr("y", "-50%")
             .attr("width", "200%")
             .attr("height", "200%");
+
         reflectionFilter.append("feGaussianBlur").attr("stdDeviation", "1.5").attr("result", "blur");
         reflectionFilter.append("feSpecularLighting")
             .attr("result", "specOut")
@@ -385,15 +392,32 @@ const CryptoBubblesUI: React.FC = () => {
             .attr("y", "-50")
             .attr("z", "200");
 
-        // --- Bubble Elements (Remain largely the same) ---
+        // --- New Drop Shadow Filter ---
+        const dropShadowFilter = defs.append("filter")
+            .attr("id", "bubble-drop-shadow")
+            .attr("x", "-50%")
+            .attr("y", "-50%")
+            .attr("width", "200%")
+            .attr("height", "200%");
+
+        dropShadowFilter.append("feDropShadow")
+            .attr("dx", "0")
+            .attr("dy", "2")
+            .attr("stdDeviation", "4")
+            .attr("flood-color", "rgba(0, 0, 0, 0.4)");
+
+
+        // --- Bubble Elements (Enhanced) ---
         const bubbleGroups = svg
             .selectAll<SVGGElement, CryptoCoin>(".bubble-group")
             .data(bubbleData)
             .enter()
             .append("g")
             .attr("class", "bubble-group")
-            .style("cursor", "grab");
+            .style("cursor", "grab")
+            .style("filter", "url(#bubble-drop-shadow)"); // Apply drop shadow to group
 
+        // --- Atmospheric Glow ---
         bubbleGroups
             .append("circle")
             .attr("class", "atmospheric-glow")
@@ -410,6 +434,7 @@ const CryptoBubblesUI: React.FC = () => {
             .style("opacity", 0.1)
             .style("animation", "pulse 3s ease-in-out infinite alternate");
 
+        // --- Mid Glow ---
         bubbleGroups
             .append("circle")
             .attr("class", "mid-glow")
@@ -426,6 +451,18 @@ const CryptoBubblesUI: React.FC = () => {
             .style("opacity", 0.3)
             .style("filter", "blur(6px)");
 
+        // --- Inner Glow (New) ---
+        bubbleGroups
+            .append("circle")
+            .attr("class", "inner-glow")
+            .attr("r", (d) => (d.radius ?? 0) - 2)
+            .attr("fill", "none")
+            .attr("stroke", "rgba(255, 255, 255, 0.1)")
+            .attr("stroke-width", 2)
+            .style("opacity", 0.2)
+            .style("filter", "blur(1px)");
+
+        // --- Main Bubble ---
         bubbleGroups
             .append("circle")
             .attr("class", "main-bubble")
@@ -451,11 +488,20 @@ const CryptoBubblesUI: React.FC = () => {
             .style("filter", "url(#enhanced-glow)")
             .style("backdrop-filter", "blur(10px)");
 
+        // --- Highlights with Dynamic Positions ---
         bubbleGroups
             .append("ellipse")
             .attr("class", "primary-highlight")
-            .attr("cx", (d) => -(d.radius ?? 0) * 0.25)
-            .attr("cy", (d) => -(d.radius ?? 0) * 0.35)
+            .attr("cx", (d) => {
+                const baseOffset = -(d.radius ?? 0) * 0.25;
+                const jitter = (Math.random() - 0.5) * (d.radius ?? 0) * 0.1; // Add slight randomness
+                return baseOffset + jitter;
+            })
+            .attr("cy", (d) => {
+                const baseOffset = -(d.radius ?? 0) * 0.35;
+                const jitter = (Math.random() - 0.5) * (d.radius ?? 0) * 0.1;
+                return baseOffset + jitter;
+            })
             .attr("rx", (d) => (d.radius ?? 0) * 0.45)
             .attr("ry", (d) => (d.radius ?? 0) * 0.25)
             .attr("fill", "rgba(255, 255, 255, 0.7)")
@@ -465,8 +511,16 @@ const CryptoBubblesUI: React.FC = () => {
         bubbleGroups
             .append("circle")
             .attr("class", "secondary-highlight")
-            .attr("cx", (d) => (d.radius ?? 0) * 0.3)
-            .attr("cy", (d) => -(d.radius ?? 0) * 0.2)
+            .attr("cx", (d) => {
+                const baseOffset = (d.radius ?? 0) * 0.3;
+                const jitter = (Math.random() - 0.5) * (d.radius ?? 0) * 0.1;
+                return baseOffset + jitter;
+            })
+            .attr("cy", (d) => {
+                const baseOffset = -(d.radius ?? 0) * 0.2;
+                const jitter = (Math.random() - 0.5) * (d.radius ?? 0) * 0.1;
+                return baseOffset + jitter;
+            })
             .attr("r", (d) => (d.radius ?? 0) * 0.18)
             .attr("fill", "rgba(255, 255, 255, 0.5)")
             .style("opacity", 0.8)
@@ -605,8 +659,8 @@ const CryptoBubblesUI: React.FC = () => {
                     .style("opacity", 0.1);
             });
 
-        bubbleGroups.each(function (d) {
-            d3.select(this).call(drag);
+        bubbleGroups.each(function () {
+            d3.select<SVGGElement, CryptoCoin>(this).call(drag);
         });
 
         // --- Enhanced Mouse Interactions ---
@@ -704,8 +758,12 @@ const CryptoBubblesUI: React.FC = () => {
         // --- Update Positions on Tick ---
         simulation.on("tick", () => {
             bubbleGroups.attr("transform", (d) => `translate(${d.x || 0}, ${d.y || 0})`);
-            // Optional: Add subtle visual effect on collision if needed
-            // (The physics itself handles collisions now)
+        });
+
+        // --- Micro-interaction: Shimmer Effect ---
+        const shimmerTimer = d3.timer(() => {
+            bubbleGroups.selectAll<SVGCircleElement, CryptoCoin>(".primary-highlight")
+                .style("opacity", () => 0.8 + Math.random() * 0.2); // Random opacity between 0.8 and 1.0
         });
 
         return () => {
@@ -716,11 +774,11 @@ const CryptoBubblesUI: React.FC = () => {
                 simulationRef.current.stop();
                 simulationRef.current = null;
             }
+            shimmerTimer.stop(); // Clean up the timer
         };
     }, [marketData, dimensions, loading, error, selectedCategory]);
 
     // --- Custom Force Functions ---
-
     // Custom force for subtle continuous movement
     function autoMoveForce(strength = 0.05) {
         let nodes: CryptoCoin[];
@@ -731,7 +789,6 @@ const CryptoBubblesUI: React.FC = () => {
                 const phaseOffset = i * 0.1;
                 const dx = Math.sin(time * 0.3 + phaseOffset) * strength;
                 const dy = Math.cos(time * 0.4 + phaseOffset * 0.7) * strength;
-
                 // Apply force (F = ma, but we apply directly to velocity)
                 if (d.fx == null) d.vx = (d.vx || 0) + dx * alpha * 10; // Scale with alpha
                 if (d.fy == null) d.vy = (d.vy || 0) + dy * alpha * 10;
@@ -748,15 +805,12 @@ const CryptoBubblesUI: React.FC = () => {
             nodes.forEach(d => {
                 const r = (d.radius ?? 0) + padding;
                 let fx = 0, fy = 0;
-
                 // Repel from left/right edges
                 if (d.x !== undefined && d.x < r) fx += (r - d.x) * strength * alpha;
                 if (d.x !== undefined && d.x > width - r) fx -= (d.x - width + r) * strength * alpha;
-
                 // Repel from top/bottom edges
                 if (d.y !== undefined && d.y < r) fy += (r - d.y) * strength * alpha;
                 if (d.y !== undefined && d.y > height - r) fy -= (d.y - height + r) * strength * alpha;
-
                 // Apply forces if not fixed
                 if (d.fx == null && fx !== 0) d.vx = (d.vx || 0) + fx;
                 if (d.fy == null && fy !== 0) d.vy = (d.vy || 0) + fy;
@@ -793,11 +847,30 @@ const CryptoBubblesUI: React.FC = () => {
     };
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900">
+        <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 animated-bg">
+            {/* Enhanced CSS Animations */}
             <style jsx>{`
                 @keyframes pulse {
-                    0% { opacity: 0.1; transform: scale(1); }
-                    100% { opacity: 0.2; transform: scale(1.05); }
+                    0% {
+                        opacity: 0.1;
+                        transform: scale(1);
+                        filter: hue-rotate(0deg); /* Add hue rotation */
+                    }
+                    100% {
+                        opacity: 0.2;
+                        transform: scale(1.05);
+                        filter: hue-rotate(10deg); /* Slight hue shift */
+                    }
+                }
+                /* Animate the background gradient */
+                .animated-bg {
+                    background-size: 200% 200%;
+                    animation: gradientShift 15s ease infinite;
+                }
+                @keyframes gradientShift {
+                    0% { background-position: 0 50%; }
+                    50% { background-position: 100% 50%; }
+                    100% { background-position: 0 50%; }
                 }
             `}</style>
             <Header
@@ -861,6 +934,7 @@ const CryptoBubblesUI: React.FC = () => {
                 )}
                 {!loading && !error && marketData.length > 0 && (
                     <div className="relative">
+                        {/* Apply animated background class */}
                         <svg
                             ref={svgRef}
                             width={dimensions.width}
@@ -868,16 +942,16 @@ const CryptoBubblesUI: React.FC = () => {
                             className="w-full rounded-2xl bg-gradient-to-br from-gray-900/70 to-gray-800/70 border border-gray-700/30 shadow-2xl backdrop-blur-sm"
                             style={{
                                 background: `
-                                    radial-gradient(circle at 20% 80%, rgba(120, 119, 198, 0.1) 0%, transparent 50%),
-                                    radial-gradient(circle at 80% 20%, rgba(255, 119, 198, 0.1) 0%, transparent 50%),
-                                    radial-gradient(circle at 40% 40%, rgba(120, 219, 255, 0.05) 0%, transparent 50%),
+                                    radial-gradient(circle at 20% 80%, rgba(120, 119, 198, 0.15) 0%, transparent 50%),
+                                    radial-gradient(circle at 80% 20%, rgba(255, 119, 198, 0.15) 0%, transparent 50%),
+                                    radial-gradient(circle at 40% 40%, rgba(120, 219, 255, 0.1) 0%, transparent 50%),
                                     linear-gradient(135deg, rgba(17, 24, 39, 0.8) 0%, rgba(31, 41, 55, 0.8) 100%)
                                 `
                             }}
                         />
                         <div className="absolute bottom-4 left-4 bg-black/80 backdrop-blur-md text-gray-300 text-sm px-6 py-4 rounded-2xl border border-gray-700/50 max-w-xs shadow-2xl">
                             <p className="font-bold text-blue-400 mb-2 flex items-center gap-2">
-                                ⚡ LIGHTNING-FAST Glass Bubbles
+                                ✨ LIGHTNING-FAST Glass Bubbles
                             </p>
                             <p className="flex items-center gap-2 mb-1">
                                 <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></span>
