@@ -2,7 +2,6 @@
 import React, { useEffect, useRef, useState, useCallback } from "react";
 import * as d3 from "d3";
 import Header from "@/components/layout/header";
-
 type CryptoCoin = {
     id: string;
     symbol: string;
@@ -28,7 +27,6 @@ type CryptoCoin = {
     ask?: number;
     spread?: number;
 };
-
 type CoinGeckoCoin = {
     id: string;
     symbol: string;
@@ -39,12 +37,10 @@ type CoinGeckoCoin = {
     total_volume: number;
     market_cap_rank: number;
 };
-
 type ExchangeRateResponse = {
     base: string;
     rates: { [key: string]: number };
 };
-
 // --- Real Data Fetching Functions ---
 const fetchRealCryptoData = async (): Promise<CryptoCoin[]> => {
     try {
@@ -77,7 +73,6 @@ const fetchRealCryptoData = async (): Promise<CryptoCoin[]> => {
         return [];
     }
 };
-
 const fetchRealForexData = async (): Promise<CryptoCoin[]> => {
     try {
         const response = await fetch('https://api.exchangerate-api.com/v4/latest/USD');
@@ -139,7 +134,6 @@ const fetchRealForexData = async (): Promise<CryptoCoin[]> => {
         return [];
     }
 };
-
 const fetchRealForexPairsData = async (): Promise<CryptoCoin[]> => {
     try {
         const response = await fetch('https://api.exchangerate-api.com/v4/latest/USD');
@@ -211,7 +205,6 @@ const fetchRealForexPairsData = async (): Promise<CryptoCoin[]> => {
         return [];
     }
 };
-
 const CryptoBubblesUI: React.FC = () => {
     const svgRef = useRef<SVGSVGElement | null>(null);
     const simulationRef = useRef<d3.Simulation<CryptoCoin, undefined> | null>(null);
@@ -225,7 +218,6 @@ const CryptoBubblesUI: React.FC = () => {
     const [marketData, setMarketData] = useState<CryptoCoin[]>([]);
     const [loading, setLoading] = useState<boolean>(true);
     const [error, setError] = useState<string | null>(null);
-
     useEffect(() => {
         const fetchData = async () => {
             setLoading(true);
@@ -263,7 +255,6 @@ const CryptoBubblesUI: React.FC = () => {
         };
         void fetchData();
     }, [searchTerm, selectedCategory]);
-
     useEffect(() => {
         const handleResize = () => {
             setDimensions({
@@ -275,7 +266,6 @@ const CryptoBubblesUI: React.FC = () => {
         window.addEventListener("resize", handleResize);
         return () => window.removeEventListener("resize", handleResize);
     }, []);
-
     // D3 Rendering with enhanced glassy effects and smoother physics
     useEffect(() => {
         if (!svgRef.current) return;
@@ -289,47 +279,52 @@ const CryptoBubblesUI: React.FC = () => {
             .exponent(0.6)
             .domain([minValue, maxValue])
             .range([30, Math.min(width, height) * 0.12]);
+        // --- MODIFIED: Ensure initial positions are safely within bounds ---
+        const bubbleData: CryptoCoin[] = marketData.map((d) => {
+            const radius = radiusScale(d.marketCap);
+            // Add a safety margin, e.g., 1.5 times the radius or a fixed amount, whichever is larger
+            const margin = Math.max(radius * 1.5, 20);
 
-        const bubbleData: CryptoCoin[] = marketData.map((d) => ({
-            ...d,
-            radius: radiusScale(d.marketCap),
-            x: Math.random() * width,
-            y: Math.random() * height,
-            vx: 0, // Initialize velocities to 0
-            vy: 0,
-            fx: null,
-            fy: null,
-        }));
-
-        // --- Enhanced Simulation Setup ---
+            return {
+                ...d,
+                radius: radius,
+                // Ensure x is between margin and (width - margin)
+                x: Math.max(margin, Math.min(width - margin, Math.random() * width)),
+                // Ensure y is between margin and (height - margin)
+                y: Math.max(margin, Math.min(height - margin, Math.random() * height)),
+                vx: 0,
+                vy: 0,
+                fx: null,
+                fy: null,
+            };
+        });
+        // --- MODIFIED Simulation Setup ---
         const simulation = d3
             .forceSimulation<CryptoCoin>(bubbleData)
             // Standard charge force for repulsion
-            .force("charge", d3.forceManyBody().strength(-50))
+            .force("charge", d3.forceManyBody().strength(10))
             // Standard collision detection
             .force("collision", d3.forceCollide<CryptoCoin>()
-                .radius((d) => (d.radius ?? 0) + 10) // Increased padding slightly
-                .strength(0.9) // Stronger collision response for crispness
-                .iterations(3) // More iterations for better collision resolution
+                .radius((d) => (d.radius ?? 0) + 10) // Keep padding
+                .strength(0.9) // Keep strength
+                .iterations(3) // Keep iterations
             )
-            // Centering force to keep things within bounds naturally
-            .force("center", d3.forceCenter(width / 2, height / 2).strength(0.02))
+            // Centering force - Adjust strength if needed, 0.02 is usually fine
+            .force("center", d3.forceCenter(width / 1.5, height / 2).strength(0.02))
             // Custom force for subtle continuous movement
-            .force("autoMove", autoMoveForce(0.1)) // Reduced strength for subtlety
-            // Custom force for boundary repulsion (replaces manual boundary logic)
-            .force("boundary", boundaryForce(width, height, 20, 0.05)); // Padding and strength
+            .force("autoMove", autoMoveForce(0.1)) // Keep reduced strength
+            // Custom force for boundary repulsion - Adjust padding and strength if needed
+            .force("boundary", boundaryForce(width, height, 20, 0.05)); // Keep these values for now
 
         // Fine-tune simulation parameters for smoothness
         simulation
             .alphaDecay(0.02) // Slower decay for longer animation
-            .velocityDecay(0.2) // Lower velocity decay for smoother motion (was 0.4)
+            .velocityDecay(0.2) // Lower velocity decay for smoother motion
             .alphaMin(0.001);
 
         simulationRef.current = simulation;
-
         // --- Gradients and Filters (Enhanced) ---
         const defs = svg.append("defs");
-
         // --- Enhanced Glass Gradients ---
         const createGlassGradient = (id: string, primaryColor: string, secondaryColor: string) => {
             const gradient = defs.append("radialGradient")
@@ -337,7 +332,6 @@ const CryptoBubblesUI: React.FC = () => {
                 .attr("cx", "25%")
                 .attr("cy", "20%")
                 .attr("r", "80%");
-
             // More complex gradient stops for richer refraction
             gradient.append("stop").attr("offset", "0%").attr("stop-color", "rgba(255, 255, 255, 0.95)").attr("stop-opacity", 0.7);
             gradient.append("stop").attr("offset", "10%").attr("stop-color", "rgba(255, 255, 255, 0.85)").attr("stop-opacity", 0.5);
@@ -347,14 +341,12 @@ const CryptoBubblesUI: React.FC = () => {
             gradient.append("stop").attr("offset", "85%").attr("stop-color", secondaryColor).attr("stop-opacity", 0.7);
             gradient.append("stop").attr("offset", "100%").attr("stop-color", "rgba(0, 0, 0, 0.1)").attr("stop-opacity", 0.9);
         };
-
         createGlassGradient("glass-positive", "rgba(34, 197, 94, 0.85)", "rgba(16, 185, 129, 0.95)");
         createGlassGradient("glass-negative", "rgba(239, 68, 68, 0.85)", "rgba(220, 38, 38, 0.95)");
         createGlassGradient("glass-forex-major", "rgba(16, 185, 129, 0.85)", "rgba(5, 150, 105, 0.95)");
         createGlassGradient("glass-forex-minor", "rgba(59, 130, 246, 0.85)", "rgba(37, 99, 235, 0.95)");
         createGlassGradient("glass-forex-exotic", "rgba(147, 51, 234, 0.85)", "rgba(126, 34, 206, 0.95)");
         createGlassGradient("glass-forex-pair", "rgba(245, 158, 11, 0.85)", "rgba(217, 119, 6, 0.95)");
-
         // --- Enhanced Glow Filter ---
         const glowFilter = defs.append("filter")
             .attr("id", "enhanced-glow")
@@ -362,7 +354,6 @@ const CryptoBubblesUI: React.FC = () => {
             .attr("y", "-100%")
             .attr("width", "300%")
             .attr("height", "300%");
-
         glowFilter.append("feGaussianBlur").attr("stdDeviation", "4").attr("result", "coloredBlur");
         glowFilter.append("feColorMatrix")
             .attr("type", "matrix")
@@ -371,7 +362,6 @@ const CryptoBubblesUI: React.FC = () => {
         const feMerge = glowFilter.append("feMerge");
         feMerge.append("feMergeNode").attr("in", "glowColor");
         feMerge.append("feMergeNode").attr("in", "SourceGraphic");
-
         // --- Reflection Filter (Remains the same) ---
         const reflectionFilter = defs.append("filter")
             .attr("id", "glass-reflection")
@@ -379,7 +369,6 @@ const CryptoBubblesUI: React.FC = () => {
             .attr("y", "-50%")
             .attr("width", "200%")
             .attr("height", "200%");
-
         reflectionFilter.append("feGaussianBlur").attr("stdDeviation", "1.5").attr("result", "blur");
         reflectionFilter.append("feSpecularLighting")
             .attr("result", "specOut")
@@ -391,7 +380,6 @@ const CryptoBubblesUI: React.FC = () => {
             .attr("x", "-50")
             .attr("y", "-50")
             .attr("z", "200");
-
         // --- New Drop Shadow Filter ---
         const dropShadowFilter = defs.append("filter")
             .attr("id", "bubble-drop-shadow")
@@ -399,14 +387,11 @@ const CryptoBubblesUI: React.FC = () => {
             .attr("y", "-50%")
             .attr("width", "200%")
             .attr("height", "200%");
-
         dropShadowFilter.append("feDropShadow")
             .attr("dx", "0")
             .attr("dy", "2")
             .attr("stdDeviation", "4")
             .attr("flood-color", "rgba(0, 0, 0, 0.4)");
-
-
         // --- Bubble Elements (Enhanced) ---
         const bubbleGroups = svg
             .selectAll<SVGGElement, CryptoCoin>(".bubble-group")
@@ -416,7 +401,6 @@ const CryptoBubblesUI: React.FC = () => {
             .attr("class", "bubble-group")
             .style("cursor", "grab")
             .style("filter", "url(#bubble-drop-shadow)"); // Apply drop shadow to group
-
         // --- Atmospheric Glow ---
         bubbleGroups
             .append("circle")
@@ -433,7 +417,6 @@ const CryptoBubblesUI: React.FC = () => {
             .attr("stroke-width", 2)
             .style("opacity", 0.1)
             .style("animation", "pulse 3s ease-in-out infinite alternate");
-
         // --- Mid Glow ---
         bubbleGroups
             .append("circle")
@@ -450,7 +433,6 @@ const CryptoBubblesUI: React.FC = () => {
             .attr("stroke-width", 3)
             .style("opacity", 0.3)
             .style("filter", "blur(6px)");
-
         // --- Inner Glow (New) ---
         bubbleGroups
             .append("circle")
@@ -461,7 +443,6 @@ const CryptoBubblesUI: React.FC = () => {
             .attr("stroke-width", 2)
             .style("opacity", 0.2)
             .style("filter", "blur(1px)");
-
         // --- Main Bubble ---
         bubbleGroups
             .append("circle")
@@ -487,7 +468,6 @@ const CryptoBubblesUI: React.FC = () => {
             .style("opacity", 0.85)
             .style("filter", "url(#enhanced-glow)")
             .style("backdrop-filter", "blur(10px)");
-
         // --- Highlights with Dynamic Positions ---
         bubbleGroups
             .append("ellipse")
@@ -507,7 +487,6 @@ const CryptoBubblesUI: React.FC = () => {
             .attr("fill", "rgba(255, 255, 255, 0.7)")
             .style("opacity", 0.9)
             .style("filter", "blur(2px)");
-
         bubbleGroups
             .append("circle")
             .attr("class", "secondary-highlight")
@@ -525,7 +504,6 @@ const CryptoBubblesUI: React.FC = () => {
             .attr("fill", "rgba(255, 255, 255, 0.5)")
             .style("opacity", 0.8)
             .style("filter", "blur(1.5px)");
-
         bubbleGroups
             .append("circle")
             .attr("class", "sparkle-highlight")
@@ -535,7 +513,6 @@ const CryptoBubblesUI: React.FC = () => {
             .attr("fill", "rgba(255, 255, 255, 0.9)")
             .style("opacity", 0.7)
             .style("filter", "blur(0.5px)");
-
         bubbleGroups
             .append("circle")
             .attr("class", "inner-rim")
@@ -544,7 +521,6 @@ const CryptoBubblesUI: React.FC = () => {
             .attr("stroke", "rgba(255, 255, 255, 0.3)")
             .attr("stroke-width", 1.5)
             .style("opacity", 0.6);
-
         bubbleGroups
             .append("text")
             .attr("class", "symbol-text")
@@ -570,7 +546,6 @@ const CryptoBubblesUI: React.FC = () => {
                 }
                 return d.symbol;
             });
-
         if (selectedCategory === 'forex' || selectedCategory === 'forex-pair') {
             bubbleGroups
                 .append("text")
@@ -597,7 +572,6 @@ const CryptoBubblesUI: React.FC = () => {
                     return "";
                 });
         }
-
         bubbleGroups
             .append("text")
             .attr("class", "change-text")
@@ -614,7 +588,6 @@ const CryptoBubblesUI: React.FC = () => {
             `)
             .style("pointer-events", "none")
             .text((d) => `${d.change24h > 0 ? "+" : ""}${d.change24h.toFixed(2)}%`);
-
         // --- Enhanced Drag Behavior ---
         const drag = d3
             .drag<SVGGElement, CryptoCoin>()
@@ -658,11 +631,9 @@ const CryptoBubblesUI: React.FC = () => {
                     .attr("r", ((d.radius ?? 0) + 15))
                     .style("opacity", 0.1);
             });
-
         bubbleGroups.each(function () {
             d3.select<SVGGElement, CryptoCoin>(this).call(drag);
         });
-
         // --- Enhanced Mouse Interactions ---
         bubbleGroups
             .on("mouseenter", function (_event, d) {
@@ -754,18 +725,15 @@ const CryptoBubblesUI: React.FC = () => {
                     .duration(150)
                     .style("opacity", 0.85);
             });
-
         // --- Update Positions on Tick ---
         simulation.on("tick", () => {
             bubbleGroups.attr("transform", (d) => `translate(${d.x || 0}, ${d.y || 0})`);
         });
-
         // --- Micro-interaction: Shimmer Effect ---
         const shimmerTimer = d3.timer(() => {
             bubbleGroups.selectAll<SVGCircleElement, CryptoCoin>(".primary-highlight")
                 .style("opacity", () => 0.8 + Math.random() * 0.2); // Random opacity between 0.8 and 1.0
         });
-
         return () => {
             if (simulation) {
                 simulation.stop();
@@ -777,7 +745,6 @@ const CryptoBubblesUI: React.FC = () => {
             shimmerTimer.stop(); // Clean up the timer
         };
     }, [marketData, dimensions, loading, error, selectedCategory]);
-
     // --- Custom Force Functions ---
     // Custom force for subtle continuous movement
     function autoMoveForce(strength = 0.05) {
@@ -797,7 +764,6 @@ const CryptoBubblesUI: React.FC = () => {
         force.initialize = (nds: CryptoCoin[]) => { nodes = nds; };
         return force;
     }
-
     // Custom force for boundary repulsion
     function boundaryForce(width: number, height: number, padding: number, strength: number) {
         let nodes: CryptoCoin[];
@@ -819,22 +785,18 @@ const CryptoBubblesUI: React.FC = () => {
         force.initialize = (nds: CryptoCoin[]) => { nodes = nds; };
         return force;
     }
-
     const restartSimulation = useCallback(() => {
         if (simulationRef.current) {
             simulationRef.current.alpha(0.5).restart(); // Higher alpha for a more noticeable restart
         }
     }, []);
-
     const handleCategoryChange = (category: string) => {
         setSelectedCategory(category);
         setSelectedBubble(null);
     };
-
     const handleSearchChange = (term: string) => {
         setSearchTerm(term);
     };
-
     const getCurrentTimeUTC = () => {
         const now = new Date();
         const year = now.getUTCFullYear();
@@ -845,7 +807,6 @@ const CryptoBubblesUI: React.FC = () => {
         const seconds = String(now.getUTCSeconds()).padStart(2, '0');
         return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
     };
-
     return (
         <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 animated-bg">
             {/* Enhanced CSS Animations */}
@@ -951,7 +912,7 @@ const CryptoBubblesUI: React.FC = () => {
                         />
                         <div className="absolute bottom-4 left-4 bg-black/80 backdrop-blur-md text-gray-300 text-sm px-6 py-4 rounded-2xl border border-gray-700/50 max-w-xs shadow-2xl">
                             <p className="font-bold text-blue-400 mb-2 flex items-center gap-2">
-                                ✨ LIGHTNING-FAST Glass Bubbles
+                                ⚡ LIGHTNING-FAST Glass Bubbles
                             </p>
                             <p className="flex items-center gap-2 mb-1">
                                 <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></span>
@@ -1106,5 +1067,4 @@ const CryptoBubblesUI: React.FC = () => {
         </div>
     );
 };
-
 export default CryptoBubblesUI;
