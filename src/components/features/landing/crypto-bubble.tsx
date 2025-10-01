@@ -343,9 +343,12 @@ const CryptoBubblesUI: React.FC = () => {
     const [marketData, setMarketData] = useState<CryptoCoin[]>([]);
     const [loading, setLoading] = useState<boolean>(true);
     const [error, setError] = useState<string | null>(null);
+
     useEffect(() => {
-        const fetchData = async () => {
-            setLoading(true);
+        const fetchData = async (showLoading: boolean) => {
+            if (showLoading) {
+                setLoading(true);
+            }
             setError(null);
             try {
                 let data: CryptoCoin[];
@@ -375,11 +378,21 @@ const CryptoBubblesUI: React.FC = () => {
                     setError("Failed to load data");
                 }
             } finally {
-                setLoading(false);
+                if (showLoading) {
+                    setLoading(false);
+                }
             }
         };
-        void fetchData();
+
+        void fetchData(true);
+
+        const interval = setInterval(() => {
+            void fetchData(false);
+        }, 30000);
+
+        return () => clearInterval(interval);
     }, [searchTerm, selectedCategory]);
+
     useEffect(() => {
         const handleResize = () => {
             setDimensions({
@@ -1092,9 +1105,7 @@ const CryptoBubblesUI: React.FC = () => {
                                                 selectedBubble.category === 'minor' ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30' :
                                                     selectedBubble.category === 'forex-pair' ? 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/30' :
                                                         'bg-purple-500/20 text-purple-400 border border-purple-500/30'
-                                        }`}>
-                                            {selectedBubble.category.toUpperCase()}
-                                        </span>
+                                        }`}>{selectedBubble.category.toUpperCase()}</span>
                                     )}
                                 </p>
                             </div>
