@@ -86,28 +86,123 @@ const fetchRealForexData = async (): Promise<CryptoCoin[]> => {
             return [];
         }
         const rates = data.rates;
-        const currenciesToShow = [
-            { symbol: "EUR", name: "Euro", country: "EU", importance: 100 },
-            { symbol: "GBP", name: "British Pound", country: "GB", importance: 85 },
-            { symbol: "JPY", name: "Japanese Yen", country: "JP", importance: 90 },
-            { symbol: "CHF", name: "Swiss Franc", country: "CH", importance: 75 },
-            { symbol: "CAD", name: "Canadian Dollar", country: "CA", importance: 70 },
-            { symbol: "AUD", name: "Australian Dollar", country: "AU", importance: 65 },
-            { symbol: "NZD", name: "New Zealand Dollar", country: "NZ", importance: 45 },
-            { symbol: "SEK", name: "Swedish Krona", country: "SE", importance: 40 },
-            { symbol: "NOK", name: "Norwegian Krone", country: "NO", importance: 42 },
-            { symbol: "DKK", name: "Danish Krone", country: "DK", importance: 35 },
-            { symbol: "PLN", name: "Polish Zloty", country: "PL", importance: 30 },
-            { symbol: "CZK", name: "Czech Koruna", country: "CZ", importance: 25 },
-            { symbol: "HUF", name: "Hungarian Forint", country: "HU", importance: 22 },
-            { symbol: "TRY", name: "Turkish Lira", country: "TR", importance: 28 },
-            { symbol: "ZAR", name: "South African Rand", country: "ZA", importance: 32 },
-            { symbol: "MXN", name: "Mexican Peso", country: "MX", importance: 35 },
-            { symbol: "BRL", name: "Brazilian Real", country: "BR", importance: 38 },
-            { symbol: "CNY", name: "Chinese Yuan", country: "CN", importance: 85 },
-            { symbol: "KRW", name: "South Korean Won", country: "KR", importance: 40 },
-            { symbol: "SGD", name: "Singapore Dollar", country: "SG", importance: 45 },
-        ];
+        const currencyDetails: { [key: string]: { name: string; country: string; importance: number } } = {
+    "USD": { name: "US Dollar", country: "US", importance: 100 },
+    "EUR": { name: "Euro", country: "EU", importance: 95 },
+    "GBP": { name: "British Pound", country: "GB", importance: 85 },
+    "JPY": { name: "Japanese Yen", country: "JP", importance: 90 },
+    "CHF": { name: "Swiss Franc", country: "CH", importance: 75 },
+    "CAD": { name: "Canadian Dollar", country: "CA", importance: 70 },
+    "AUD": { name: "Australian Dollar", country: "AU", importance: 65 },
+    "NZD": { name: "New Zealand Dollar", country: "NZ", importance: 60 },
+    "SEK": { name: "Swedish Krona", country: "SE", importance: 55 },
+    "NOK": { name: "Norwegian Krone", country: "NO", importance: 55 },
+    "DKK": { name: "Danish Krone", country: "DK", importance: 50 },
+    "PLN": { name: "Polish Zloty", country: "PL", importance: 45 },
+    "CZK": { name: "Czech Koruna", country: "CZ", importance: 40 },
+    "HUF": { name: "Hungarian Forint", country: "HU", importance: 38 },
+    "TRY": { name: "Turkish Lira", country: "TR", importance: 42 },
+    "ZAR": { name: "South African Rand", country: "ZA", importance: 48 },
+    "MXN": { name: "Mexican Peso", country: "MX", importance: 50 },
+    "BRL": { name: "Brazilian Real", country: "BR", importance: 52 },
+    "CNY": { name: "Chinese Yuan", country: "CN", importance: 88 },
+    "KRW": { name: "South Korean Won", country: "KR", importance: 50 },
+    "SGD": { name: "Singapore Dollar", country: "SG", importance: 58 },
+    "INR": { name: "Indian Rupee", country: "IN", importance: 62 },
+    "RUB": { name: "Russian Ruble", country: "RU", importance: 55 },
+    "HKD": { name: "Hong Kong Dollar", country: "HK", importance: 57 },
+    "ILS": { name: "Israeli Shekel", country: "IL", importance: 45 },
+    "PHP": { name: "Philippine Peso", country: "PH", importance: 35 },
+    "MYR": { name: "Malaysian Ringgit", country: "MY", importance: 40 },
+    "THB": { name: "Thai Baht", country: "TH", importance: 42 },
+    "IDR": { name: "Indonesian Rupiah", country: "ID", importance: 38 },
+    "VND": { name: "Vietnamese Dong", country: "VN", importance: 30 },
+    "AED": { name: "UAE Dirham", country: "AE", importance: 60 },
+    "SAR": { name: "Saudi Riyal", country: "SA", importance: 58 },
+    "QAR": { name: "Qatari Riyal", country: "QA", importance: 55 },
+    "KWD": { name: "Kuwaiti Dinar", country: "KW", importance: 57 },
+    "BHD": { name: "Bahraini Dinar", country: "BH", importance: 54 },
+    "OMR": { name: "Omani Rial", country: "OM", importance: 53 },
+    "EGP": { name: "Egyptian Pound", country: "EG", importance: 30 },
+    "CLP": { name: "Chilean Peso", country: "CL", importance: 32 },
+    "COP": { name: "Colombian Peso", country: "CO", importance: 34 },
+    "PEN": { name: "Peruvian Sol", country: "PE", importance: 31 },
+    "ARS": { name: "Argentine Peso", country: "AR", importance: 25 },
+    "UYU": { name: "Uruguayan Peso", country: "UY", importance: 22 },
+    "PYG": { name: "Paraguayan Guarani", country: "PY", importance: 20 },
+    "DOP": { name: "Dominican Peso", country: "DO", importance: 24 },
+    "GTQ": { name: "Guatemalan Quetzal", country: "GT", importance: 26 },
+    "CRC": { name: "Costa Rican Colon", country: "CR", importance: 28 },
+    "PAB": { name: "Panamanian Balboa", country: "PA", importance: 29 },
+    "SVC": { name: "Salvadoran Colon", country: "SV", importance: 21 },
+    "HNL": { name: "Honduran Lempira", country: "HN", importance: 19 },
+    "NIO": { name: "Nicaraguan Cordoba", country: "NI", importance: 18 },
+    "JMD": { name: "Jamaican Dollar", country: "JM", importance: 23 },
+    "TTD": { name: "Trinidad & Tobago Dollar", country: "TT", importance: 27 },
+    "XCD": { name: "East Caribbean Dollar", country: "XC", importance: 20 },
+    "BBD": { name: "Barbadian Dollar", country: "BB", importance: 22 },
+    "BSD": { name: "Bahamian Dollar", country: "BS", importance: 25 },
+    "BZD": { name: "Belize Dollar", country: "BZ", importance: 19 },
+    "CUP": { name: "Cuban Peso", country: "CU", importance: 15 },
+    "DZD": { name: "Algerian Dinar", country: "DZ", importance: 28 },
+    "MAD": { name: "Moroccan Dirham", country: "MA", importance: 32 },
+    "TND": { name: "Tunisian Dinar", country: "TN", importance: 30 },
+    "GHS": { name: "Ghanaian Cedi", country: "GH", importance: 26 },
+    "KES": { name: "Kenyan Shilling", country: "KE", importance: 29 },
+    "UGX": { name: "Ugandan Shilling", country: "UG", importance: 24 },
+    "TZS": { name: "Tanzanian Shilling", country: "TZ", importance: 25 },
+    "RWF": { name: "Rwandan Franc", country: "RW", importance: 22 },
+    "BIF": { name: "Burundian Franc", country: "BI", importance: 18 },
+    "CDF": { name: "Congolese Franc", country: "CD", importance: 19 },
+    "XAF": { name: "Central African CFA Franc", country: "XA", importance: 20 },
+    "XOF": { name: "West African CFA Franc", country: "XO", importance: 21 },
+    "NGN": { name: "Nigerian Naira", country: "NG", importance: 35 },
+    "GMD": { name: "Gambian Dalasi", country: "GM", importance: 17 },
+    "SLL": { name: "Sierra Leonean Leone", country: "SL", importance: 16 },
+    "LRD": { name: "Liberian Dollar", country: "LR", importance: 15 },
+    "GWP": { name: "Guinea-Bissau Peso", country: "GW", importance: 14 },
+    "CVE": { name: "Cape Verdean Escudo", country: "CV", importance: 19 },
+    "AOA": { name: "Angolan Kwanza", country: "AO", importance: 23 },
+    "ZMW": { name: "Zambian Kwacha", country: "ZM", importance: 24 },
+    "MWK": { name: "Malawian Kwacha", country: "MW", importance: 20 },
+    "BWP": { name: "Botswanan Pula", country: "BW", importance: 28 },
+    "NAD": { name: "Namibian Dollar", country: "NA", importance: 27 },
+    "LSL": { name: "Lesotho Loti", country: "LS", importance: 21 },
+    "SZL": { name: "Swazi Lilangeni", country: "SZ", importance: 22 },
+    "SCR": { name: "Seychellois Rupee", country: "SC", importance: 26 },
+    "MVR": { name: "Maldivian Rufiyaa", country: "MV", importance: 25 },
+    "LKR": { name: "Sri Lankan Rupee", country: "LK", importance: 30 },
+    "PKR": { name: "Pakistani Rupee", country: "PK", importance: 33 },
+    "BDT": { name: "Bangladeshi Taka", country: "BD", importance: 31 },
+    "NPR": { name: "Nepalese Rupee", country: "NP", importance: 27 },
+    "MNT": { name: "Mongolian Tugrik", country: "MN", importance: 24 },
+    "KZT": { name: "Kazakhstani Tenge", country: "KZ", importance: 36 },
+    "UZS": { name: "Uzbekistani Som", country: "UZ", importance: 32 },
+    "KGS": { name: "Kyrgystani Som", country: "KG", importance: 29 },
+    "TJS": { name: "Tajikistani Somoni", country: "TJ", importance: 28 },
+    "GEL": { name: "Georgian Lari", country: "GE", importance: 34 },
+    "AMD": { name: "Armenian Dram", country: "AM", importance: 31 },
+    "AZN": { name: "Azerbaijani Manat", country: "AZ", importance: 35 },
+    "BYN": { name: "Belarusian Ruble", country: "BY", importance: 30 },
+    "UAH": { name: "Ukrainian Hryvnia", country: "UA", importance: 33 },
+    "MDL": { name: "Moldovan Leu", country: "MD", importance: 28 },
+    "BGN": { name: "Bulgarian Lev", country: "BG", importance: 37 },
+    "RON": { name: "Romanian Leu", country: "RO", importance: 39 },
+    "HRK": { name: "Croatian Kuna", country: "HR", importance: 41 },
+    "RSD": { name: "Serbian Dinar", country: "RS", importance: 36 },
+    "MKD": { name: "Macedonian Denar", country: "MK", importance: 32 },
+    "ALL": { name: "Albanian Lek", country: "AL", importance: 30 },
+    "BAM": { name: "Bosnia-Herzegovina Convertible Mark", country: "BA", importance: 34 },
+    "ISK": { name: "Icelandic Krona", country: "IS", importance: 43 },
+    "FJD": { name: "Fijian Dollar", country: "FJ", importance: 29 }
+};
+const allCurrencies = Object.keys(currencyDetails);
+const currenciesToShow = allCurrencies.map(symbol => ({
+    symbol,
+    name: currencyDetails[symbol].name,
+    country: currencyDetails[symbol].country,
+    importance: currencyDetails[symbol].importance
+})).slice(0, 100);
         return currenciesToShow.map((currency): CryptoCoin | null => {
             const rate = rates[currency.symbol];
             if (rate === undefined) {
@@ -147,25 +242,55 @@ const fetchRealForexPairsData = async (): Promise<CryptoCoin[]> => {
             return [];
         }
         const rates = data.rates;
-        const pairsToShow = [
-            { base: "EUR", quote: "USD" },
-            { base: "GBP", quote: "USD" },
-            { base: "USD", quote: "JPY" },
-            { base: "USD", quote: "CHF" },
-            { base: "USD", quote: "CAD" },
-            { base: "AUD", quote: "USD" },
-            { base: "NZD", quote: "USD" },
-            { base: "EUR", quote: "GBP" },
-            { base: "EUR", quote: "JPY" },
-            { base: "GBP", quote: "JPY" },
-            { base: "EUR", quote: "CHF" },
-            { base: "GBP", quote: "CHF" },
-            { base: "AUD", quote: "JPY" },
-            { base: "CAD", quote: "JPY" },
-            { base: "CHF", quote: "JPY" },
+        const allCurrencies = [
+            "USD", "EUR", "GBP", "JPY", "CHF", "CAD", "AUD", "NZD", "SEK", "NOK",
+            "DKK", "PLN", "CZK", "HUF", "TRY", "ZAR", "MXN", "BRL", "CNY", "KRW",
+            "SGD", "INR", "RUB", "HKD", "ILS", "PHP", "MYR", "THB", "IDR", "VND",
+            "AED", "SAR", "QAR", "KWD", "BHD", "OMR", "EGP", "CLP", "COP", "PEN",
+            "ARS", "UYU", "PYG", "DOP", "GTQ", "CRC", "PAB", "SVC", "HNL", "NIO",
+            "JMD", "TTD", "XCD", "BBD", "BSD", "BZD", "CUP", "DZD", "MAD", "TND",
+            "GHS", "KES", "UGX", "TZS", "RWF", "BIF", "CDF", "XAF", "XOF", "NGN",
+            "GMD", "SLL", "LRD", "GWP", "CVE", "MRO", "STD", "AOA", "ZMW", "MWK",
+            "BWP", "NAD", "LSL", "SZL", "SCR", "MVR", "LKR", "PKR", "BDT", "NPR",
+            "MNT", "KZT", "UZS", "KGS", "TJS", "GEL", "AMD", "AZN", "BYN", "UAH",
+            "MDL", "BGN", "RON", "HRK", "RSD", "MKD", "ALL", "BAM", "ISK", "FJD"
         ];
+        const pairsToShow: { base: string; quote: string }[] = [];
+        const majorCurrencies = ["USD", "EUR", "GBP", "JPY", "CHF", "CAD", "AUD", "NZD"];
+        // Generate major pairs (e.g., EUR/USD, GBP/JPY)
+        for (let i = 0; i < majorCurrencies.length; i++) {
+            for (let j = i + 1; j < majorCurrencies.length; j++) {
+                pairsToShow.push({ base: majorCurrencies[i], quote: majorCurrencies[j] });
+                pairsToShow.push({ base: majorCurrencies[j], quote: majorCurrencies[i] });
+            }
+        }
+        // Add USD crosses with other major/minor currencies
+        allCurrencies.forEach(currency => {
+            if (currency !== "USD" && !majorCurrencies.includes(currency)) {
+                pairsToShow.push({ base: "USD", quote: currency });
+                pairsToShow.push({ base: currency, quote: "USD" });
+            }
+        });
+        // Add EUR crosses
+        allCurrencies.forEach(currency => {
+            if (currency !== "EUR" && currency !== "USD" && !majorCurrencies.includes(currency)) {
+                pairsToShow.push({ base: "EUR", quote: currency });
+            }
+        });
+        // Add GBP crosses
+        allCurrencies.forEach(currency => {
+            if (currency !== "GBP" && currency !== "USD" && currency !== "EUR" && !majorCurrencies.includes(currency)) {
+                pairsToShow.push({ base: "GBP", quote: currency });
+            }
+        });
+        // Limit to 100 pairs to avoid overwhelming the display and API calls
+        const uniquePairs = Array.from(new Set(pairsToShow.map(p => `${p.base}/${p.quote}`))).map(s => {
+            const [base, quote] = s.split('/');
+            return { base, quote };
+        });
+        const finalPairs = uniquePairs.slice(0, 100);
         const pairData: CryptoCoin[] = [];
-        for (const pair of pairsToShow) {
+        for (const pair of finalPairs) {
             const baseRate = rates[pair.base];
             const quoteRate = rates[pair.quote];
             if (baseRate !== undefined && quoteRate !== undefined) {
@@ -1051,8 +1176,7 @@ const CryptoBubblesUI: React.FC = () => {
                             <span className={`font-bold text-lg flex items-center gap-2 ${selectedBubble.change24h >= 0 ? "text-green-400" : "text-red-400"
                             }`}>
                                 <span className="text-xl">{selectedBubble.change24h >= 0 ? "📈" : "📉"}</span>
-                                {selectedBubble.change24h >= 0 ? "+" : ""}
-                                {selectedBubble.change24h.toFixed(2)}%
+                                {selectedBubble.change24h >= 0 ? "+" : ""}{selectedBubble.change24h.toFixed(2)}%
                             </span>
                         </div>
                     </div>
