@@ -4,16 +4,13 @@ import {
     TrendingUp,
     Calendar,
     Sparkles,
-    Menu,
-    X,
     Database,
     Eye,
     Zap
 } from "lucide-react";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 
 export default function CryptoBubblesPreLaunch() {
-    const [isMenuOpen, setIsMenuOpen] = useState(false);
     // State for countdown timer
     const [timeLeft, setTimeLeft] = useState({
         days: 0,
@@ -23,7 +20,8 @@ export default function CryptoBubblesPreLaunch() {
     });
 
     // TODO: Set your actual launch date for Crypto Bubbles here
-    const launchDate = new Date('2025-12-25T00:00:00');
+    // useMemo ensures the date object doesn't change on every render
+    const launchDate = useMemo(() => new Date('2025-12-25T00:00:00'), []);
 
     useEffect(() => {
         const calculateTimeLeft = () => {
@@ -52,10 +50,6 @@ export default function CryptoBubblesPreLaunch() {
         // Cleanup interval on component unmount
         return () => clearInterval(timer);
     }, [launchDate]); // Re-run if launchDate changes
-
-    const toggleMenu = () => {
-        setIsMenuOpen(!isMenuOpen);
-    };
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 text-gray-100">

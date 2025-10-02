@@ -245,8 +245,10 @@ function getHistoricalRate(currency: string): number {
   return variations[currency] || 1;
 }
 
-function getHistoricalPairRate(base: string, quote: string): number {
+function getHistoricalPairRate(_base: string, _quote: string): number {
   // Simulate historical pair rates
+  // Note: base and quote parameters are not used in this simple simulation
+  // but are kept for future API integration
   return Math.random() * 2 + 0.5; // Simple simulation
 }
 

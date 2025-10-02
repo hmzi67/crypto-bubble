@@ -1,14 +1,13 @@
 "use client"
 
-import React, { useState } from "react";
-import { Search, Settings, Menu, TrendingUp, DollarSign, BarChart3, User } from "lucide-react";
+import React from "react";
+import { Search, TrendingUp, DollarSign, BarChart3 } from "lucide-react";
 
 type HeaderProps = {
     title?: string;
     subtitle?: string;
     onSearchChange?: (term: string) => void;
     onCategoryChange?: (category: string) => void;
-    onRestartAnimation?: () => void;
     searchTerm?: string;
     selectedCategory?: string;
     showCategories?: boolean;
@@ -20,7 +19,6 @@ type HeaderProps = {
         label: string;
         icon: React.ReactNode;
     }>;
-    rightActions?: React.ReactNode;
 };
 
 const Header: React.FC<HeaderProps> = ({
@@ -28,18 +26,14 @@ const Header: React.FC<HeaderProps> = ({
     subtitle = "Live Market Visualization",
     onSearchChange,
     onCategoryChange,
-    onRestartAnimation,
     searchTerm = "",
     selectedCategory = "crypto",
     showCategories = true,
     showSearch = true,
     showControls = true,
     placeholder,
-    categories,
-    rightActions
+    categories
 }) => {
-    const [selectedRange, setSelectedRange] = useState<string>("1 - 100");
-    const [selectedCurrency, setSelectedCurrency] = useState<string>("USD");
 
     const defaultCategories = [
         { id: "crypto", label: "Crypto", icon: <TrendingUp className="w-4 h-4" /> },
@@ -87,8 +81,8 @@ const Header: React.FC<HeaderProps> = ({
                                     key={category.id}
                                     onClick={() => onCategoryChange?.(category.id)}
                                     className={`flex items-center gap-2 px-4 py-2.5 rounded-lg font-semibold transition-all duration-300 ${selectedCategory === category.id
-                                            ? "bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-lg transform scale-105"
-                                            : "text-gray-300 hover:text-white hover:bg-gray-700/50"
+                                        ? "bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-lg transform scale-105"
+                                        : "text-gray-300 hover:text-white hover:bg-gray-700/50"
                                         }`}
                                 >
                                     {category.icon}
