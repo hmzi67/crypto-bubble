@@ -730,15 +730,17 @@ const CryptoBubblesUI: React.FC = () => {
                 group.style("cursor", "grabbing");
                 group.select(".main-bubble")
                     .transition()
-                    .duration(150)
-                    .attr("r", ((d.radius ?? 0) * 1.1))
+                    .duration(350)
+                    .ease(d3.easeCubicOut)
+                    .attr("r", ((d.radius ?? 0) * 1.13))
                     .style("opacity", 1)
                     .attr("stroke-width", 4);
                 group.select(".atmospheric-glow")
                     .transition()
-                    .duration(150)
-                    .attr("r", ((d.radius ?? 0) + 25))
-                    .style("opacity", 0.3);
+                    .duration(350)
+                    .ease(d3.easeCubicOut)
+                    .attr("r", ((d.radius ?? 0) + 28))
+                    .style("opacity", 0.33);
             })
             .on("drag", function (event, d) {
                 d.fx = event.x;
@@ -752,13 +754,15 @@ const CryptoBubblesUI: React.FC = () => {
                 group.style("cursor", "grab");
                 group.select(".main-bubble")
                     .transition()
-                    .duration(300)
+                    .duration(500)
+                    .ease(d3.easeCubicInOut)
                     .attr("r", d.radius ?? 0)
                     .style("opacity", 0.85)
                     .attr("stroke-width", 2.5);
                 group.select(".atmospheric-glow")
                     .transition()
-                    .duration(300)
+                    .duration(500)
+                    .ease(d3.easeCubicInOut)
                     .attr("r", ((d.radius ?? 0) + 15))
                     .style("opacity", 0.1);
             });
