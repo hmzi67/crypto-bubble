@@ -1,6 +1,6 @@
 "use client"
 
-import React from "react";
+import React, {useEffect, useState} from "react";
 import { Search, TrendingUp, DollarSign, BarChart3 } from "lucide-react";
 
 type HeaderProps = {
@@ -30,10 +30,18 @@ const Header: React.FC<HeaderProps> = ({
     selectedCategory = "crypto",
     showCategories = true,
     showSearch = true,
-    showControls = true,
     placeholder,
     categories
 }) => {
+    const [time, setTime] = useState(new Date().toLocaleTimeString());
+
+    useEffect(() => {
+        const interval = setInterval(() => {
+            setTime(new Date().toLocaleTimeString())
+        }, 1000);
+
+        return () => clearInterval(interval)
+    }, [])
 
     const defaultCategories = [
         { id: "crypto", label: "Crypto", icon: <TrendingUp className="w-4 h-4" /> },
@@ -109,65 +117,6 @@ const Header: React.FC<HeaderProps> = ({
                             <div className="absolute inset-0 rounded-xl bg-gradient-to-r from-blue-500/10 to-purple-500/10 opacity-0 group-focus-within:opacity-100 transition-opacity duration-300 pointer-events-none"></div>
                         </div>
                     )}
-
-                    {/* Controls */}
-                    {showControls && (
-                        <>
-                            {/* Range Selector */}
-                            {/*<div className="flex items-center gap-3 bg-gray-800/50 backdrop-blur-sm px-4 py-2 rounded-xl border border-gray-700/50">*/}
-                            {/*    <span className="text-gray-300 text-sm font-medium">Range:</span>*/}
-                            {/*    <select*/}
-                            {/*        value={selectedRange}*/}
-                            {/*        onChange={(e) => setSelectedRange(e.target.value)}*/}
-                            {/*        className="bg-transparent text-white font-semibold focus:outline-none cursor-pointer hover:text-blue-400 transition-colors"*/}
-                            {/*    >*/}
-                            {/*        <option value="1 - 50" className="bg-gray-800">1 - 50</option>*/}
-                            {/*        <option value="1 - 100" className="bg-gray-800">1 - 100</option>*/}
-                            {/*        <option value="1 - 200" className="bg-gray-800">1 - 200</option>*/}
-                            {/*        <option value="1 - 500" className="bg-gray-800">1 - 500</option>*/}
-                            {/*    </select>*/}
-                            {/*</div>*/}
-
-                            {/* Currency Selector */}
-                            {/*<div className="flex items-center gap-3 bg-gray-800/50 backdrop-blur-sm px-4 py-2 rounded-xl border border-gray-700/50">*/}
-                            {/*    <span className="text-gray-300 text-sm font-medium">Currency:</span>*/}
-                            {/*    <select*/}
-                            {/*        value={selectedCurrency}*/}
-                            {/*        onChange={(e) => setSelectedCurrency(e.target.value)}*/}
-                            {/*        className="bg-transparent text-white font-semibold focus:outline-none cursor-pointer hover:text-blue-400 transition-colors"*/}
-                            {/*    >*/}
-                            {/*        <option value="USD" className="bg-gray-800">$ USD</option>*/}
-                            {/*        <option value="EUR" className="bg-gray-800">€ EUR</option>*/}
-                            {/*        <option value="GBP" className="bg-gray-800">£ GBP</option>*/}
-                            {/*        <option value="JPY" className="bg-gray-800">¥ JPY</option>*/}
-                            {/*        <option value="BTC" className="bg-gray-800">₿ BTC</option>*/}
-                            {/*    </select>*/}
-                            {/*</div>*/}
-
-                            {/* Action Buttons */}
-                            {/*<div className="flex items-center gap-2">*/}
-                            {/*    <button*/}
-                            {/*        onClick={onRestartAnimation}*/}
-                            {/*        className="group p-3 text-gray-400 hover:text-white hover:bg-blue-600/20 rounded-xl transition-all duration-300 border border-gray-700/50 hover:border-blue-500/50"*/}
-                            {/*        title="Restart Animation"*/}
-                            {/*    >*/}
-                            {/*        <Menu className="w-5 h-5 group-hover:rotate-180 transition-transform duration-300" />*/}
-                            {/*    </button>*/}
-                            {/*    <button className="group p-3 text-gray-400 hover:text-white hover:bg-purple-600/20 rounded-xl transition-all duration-300 border border-gray-700/50 hover:border-purple-500/50">*/}
-                            {/*        <Settings className="w-5 h-5 group-hover:rotate-90 transition-transform duration-300" />*/}
-                            {/*    </button>*/}
-                            {/*</div>*/}
-                        </>
-                    )}
-
-                    {/* User Profile */}
-                    {/*<div className="flex items-center gap-3 bg-gray-800/50 backdrop-blur-sm px-4 py-2 rounded-xl border border-gray-700/50">*/}
-                    {/*    <User className="w-4 h-4 text-gray-400" />*/}
-                    {/*    <span className="text-white text-sm font-medium">Hamza</span>*/}
-                    {/*</div>*/}
-
-                    {/* Custom Right Actions */}
-                    {/*{rightActions}*/}
                 </div>
             </div>
 
@@ -180,12 +129,6 @@ const Header: React.FC<HeaderProps> = ({
                             <span className="text-green-400 font-semibold ml-2 flex items-center gap-1">
                                 <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
                                 Live
-                            </span>
-                        </div>
-                        <div className="text-sm">
-                            <span className="text-gray-400">Last Update:</span>
-                            <span className="text-white font-semibold ml-2">
-                                {new Date().toLocaleTimeString()}
                             </span>
                         </div>
                         {selectedCategory === 'crypto' && (
@@ -203,10 +146,10 @@ const Header: React.FC<HeaderProps> = ({
                     </div>
 
                     <div className="flex items-center gap-2">
-                        <span className="text-xs text-gray-500">Current Time (UTC):</span>
-                        <div className="text-xs font-semibold text-gray-400 bg-gray-700/50 px-2 py-1 rounded">
-                            2025-08-30 13:31:45
-                        </div>
+                        <span className="text-gray-400">Updated Time:</span>
+                        <span className="text-white font-semibold ml-2">
+                                {time}
+                            </span>
                     </div>
                 </div>
             </div>
