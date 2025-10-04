@@ -2,6 +2,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import * as d3 from "d3";
 import Header from "@/components/layout/header";
+
 type CryptoCoin = {
     id: string;
     symbol: string;
@@ -25,10 +26,13 @@ type CryptoCoin = {
     size?: number;
     currentRate?: number;
     countryCode?: string;
+    baseCountryCode?: string;
+    quoteCountryCode?: string;
     bid?: number;
     ask?: number;
     spread?: number;
 };
+
 type CoinGeckoCoin = {
     id: string;
     symbol: string;
@@ -40,10 +44,123 @@ type CoinGeckoCoin = {
     total_volume: number;
     market_cap_rank: number;
 };
+
 type ExchangeRateResponse = {
     base: string;
     rates: { [key: string]: number };
 };
+
+const currencyDetails: { [key: string]: { name: string; country: string; importance: number } } = {
+    "USD": { name: "US Dollar", country: "US", importance: 100 },
+    "EUR": { name: "Euro", country: "EU", importance: 95 },
+    "GBP": { name: "British Pound", country: "GB", importance: 85 },
+    "JPY": { name: "Japanese Yen", country: "JP", importance: 90 },
+    "CHF": { name: "Swiss Franc", country: "CH", importance: 75 },
+    "CAD": { name: "Canadian Dollar", country: "CA", importance: 70 },
+    "AUD": { name: "Australian Dollar", country: "AU", importance: 65 },
+    "NZD": { name: "New Zealand Dollar", country: "NZ", importance: 60 },
+    "SEK": { name: "Swedish Krona", country: "SE", importance: 55 },
+    "NOK": { name: "Norwegian Krone", country: "NO", importance: 55 },
+    "DKK": { name: "Danish Krone", country: "DK", importance: 50 },
+    "PLN": { name: "Polish Zloty", country: "PL", importance: 45 },
+    "CZK": { name: "Czech Koruna", country: "CZ", importance: 40 },
+    "HUF": { name: "Hungarian Forint", country: "HU", importance: 38 },
+    "TRY": { name: "Turkish Lira", country: "TR", importance: 42 },
+    "ZAR": { name: "South African Rand", country: "ZA", importance: 48 },
+    "MXN": { name: "Mexican Peso", country: "MX", importance: 50 },
+    "BRL": { name: "Brazilian Real", country: "BR", importance: 52 },
+    "CNY": { name: "Chinese Yuan", country: "CN", importance: 88 },
+    "KRW": { name: "South Korean Won", country: "KR", importance: 50 },
+    "SGD": { name: "Singapore Dollar", country: "SG", importance: 58 },
+    "INR": { name: "Indian Rupee", country: "IN", importance: 62 },
+    "RUB": { name: "Russian Ruble", country: "RU", importance: 55 },
+    "HKD": { name: "Hong Kong Dollar", country: "HK", importance: 57 },
+    "ILS": { name: "Israeli Shekel", country: "IL", importance: 45 },
+    "PHP": { name: "Philippine Peso", country: "PH", importance: 35 },
+    "MYR": { name: "Malaysian Ringgit", country: "MY", importance: 40 },
+    "THB": { name: "Thai Baht", country: "TH", importance: 42 },
+    "IDR": { name: "Indonesian Rupiah", country: "ID", importance: 38 },
+    "VND": { name: "Vietnamese Dong", country: "VN", importance: 30 },
+    "AED": { name: "UAE Dirham", country: "AE", importance: 60 },
+    "SAR": { name: "Saudi Riyal", country: "SA", importance: 58 },
+    "QAR": { name: "Qatari Riyal", country: "QA", importance: 55 },
+    "KWD": { name: "Kuwaiti Dinar", country: "KW", importance: 57 },
+    "BHD": { name: "Bahraini Dinar", country: "BH", importance: 54 },
+    "OMR": { name: "Omani Rial", country: "OM", importance: 53 },
+    "EGP": { name: "Egyptian Pound", country: "EG", importance: 30 },
+    "CLP": { name: "Chilean Peso", country: "CL", importance: 32 },
+    "COP": { name: "Colombian Peso", country: "CO", importance: 34 },
+    "PEN": { name: "Peruvian Sol", country: "PE", importance: 31 },
+    "ARS": { name: "Argentine Peso", country: "AR", importance: 25 },
+    "UYU": { name: "Uruguayan Peso", country: "UY", importance: 22 },
+    "PYG": { name: "Paraguayan Guarani", country: "PY", importance: 20 },
+    "DOP": { name: "Dominican Peso", country: "DO", importance: 24 },
+    "GTQ": { name: "Guatemalan Quetzal", country: "GT", importance: 26 },
+    "CRC": { name: "Costa Rican Colon", country: "CR", importance: 28 },
+    "PAB": { name: "Panamanian Balboa", country: "PA", importance: 29 },
+    "SVC": { name: "Salvadoran Colon", country: "SV", importance: 21 },
+    "HNL": { name: "Honduran Lempira", country: "HN", importance: 19 },
+    "NIO": { name: "Nicaraguan Cordoba", country: "NI", importance: 18 },
+    "JMD": { name: "Jamaican Dollar", country: "JM", importance: 23 },
+    "TTD": { name: "Trinidad & Tobago Dollar", country: "TT", importance: 27 },
+    "XCD": { name: "East Caribbean Dollar", country: "XC", importance: 20 },
+    "BBD": { name: "Barbadian Dollar", country: "BB", importance: 22 },
+    "BSD": { name: "Bahamian Dollar", country: "BS", importance: 25 },
+    "BZD": { name: "Belize Dollar", country: "BZ", importance: 19 },
+    "CUP": { name: "Cuban Peso", country: "CU", importance: 15 },
+    "DZD": { name: "Algerian Dinar", country: "DZ", importance: 28 },
+    "MAD": { name: "Moroccan Dirham", country: "MA", importance: 32 },
+    "TND": { name: "Tunisian Dinar", country: "TN", importance: 30 },
+    "GHS": { name: "Ghanaian Cedi", country: "GH", importance: 26 },
+    "KES": { name: "Kenyan Shilling", country: "KE", importance: 29 },
+    "UGX": { name: "Ugandan Shilling", country: "UG", importance: 24 },
+    "TZS": { name: "Tanzanian Shilling", country: "TZ", importance: 25 },
+    "RWF": { name: "Rwandan Franc", country: "RW", importance: 22 },
+    "BIF": { name: "Burundian Franc", country: "BI", importance: 18 },
+    "CDF": { name: "Congolese Franc", country: "CD", importance: 19 },
+    "XAF": { name: "Central African CFA Franc", country: "XA", importance: 20 },
+    "XOF": { name: "West African CFA Franc", country: "XO", importance: 21 },
+    "NGN": { name: "Nigerian Naira", country: "NG", importance: 35 },
+    "GMD": { name: "Gambian Dalasi", country: "GM", importance: 17 },
+    "SLL": { name: "Sierra Leonean Leone", country: "SL", importance: 16 },
+    "LRD": { name: "Liberian Dollar", country: "LR", importance: 15 },
+    "GWP": { name: "Guinea-Bissau Peso", country: "GW", importance: 14 },
+    "CVE": { name: "Cape Verdean Escudo", country: "CV", importance: 19 },
+    "AOA": { name: "Angolan Kwanza", country: "AO", importance: 23 },
+    "ZMW": { name: "Zambian Kwacha", country: "ZM", importance: 24 },
+    "MWK": { name: "Malawian Kwacha", country: "MW", importance: 20 },
+    "BWP": { name: "Botswanan Pula", country: "BW", importance: 28 },
+    "NAD": { name: "Namibian Dollar", country: "NA", importance: 27 },
+    "LSL": { name: "Lesotho Loti", country: "LS", importance: 21 },
+    "SZL": { name: "Swazi Lilangeni", country: "SZ", importance: 22 },
+    "SCR": { name: "Seychellois Rupee", country: "SC", importance: 26 },
+    "MVR": { name: "Maldivian Rufiyaa", country: "MV", importance: 25 },
+    "LKR": { name: "Sri Lankan Rupee", country: "LK", importance: 30 },
+    "PKR": { name: "Pakistani Rupee", country: "PK", importance: 33 },
+    "BDT": { name: "Bangladeshi Taka", country: "BD", importance: 31 },
+    "NPR": { name: "Nepalese Rupee", country: "NP", importance: 27 },
+    "MNT": { name: "Mongolian Tugrik", country: "MN", importance: 24 },
+    "KZT": { name: "Kazakhstani Tenge", country: "KZ", importance: 36 },
+    "UZS": { name: "Uzbekistani Som", country: "UZ", importance: 32 },
+    "KGS": { name: "Kyrgystani Som", country: "KG", importance: 29 },
+    "TJS": { name: "Tajikistani Somoni", country: "TJ", importance: 28 },
+    "GEL": { name: "Georgian Lari", country: "GE", importance: 34 },
+    "AMD": { name: "Armenian Dram", country: "AM", importance: 31 },
+    "AZN": { name: "Azerbaijani Manat", country: "AZ", importance: 35 },
+    "BYN": { name: "Belarusian Ruble", country: "BY", importance: 30 },
+    "UAH": { name: "Ukrainian Hryvnia", country: "UA", importance: 33 },
+    "MDL": { name: "Moldovan Leu", country: "MD", importance: 28 },
+    "BGN": { name: "Bulgarian Lev", country: "BG", importance: 37 },
+    "RON": { name: "Romanian Leu", country: "RO", importance: 39 },
+    "HRK": { name: "Croatian Kuna", country: "HR", importance: 41 },
+    "RSD": { name: "Serbian Dinar", country: "RS", importance: 36 },
+    "MKD": { name: "Macedonian Denar", country: "MK", importance: 32 },
+    "ALL": { name: "Albanian Lek", country: "AL", importance: 30 },
+    "BAM": { name: "Bosnia-Herzegovina Convertible Mark", country: "BA", importance: 34 },
+    "ISK": { name: "Icelandic Krona", country: "IS", importance: 43 },
+    "FJD": { name: "Fijian Dollar", country: "FJ", importance: 29 }
+};
+
 // --- Real Data Fetching Functions ---
 const fetchRealCryptoData = async (): Promise<CryptoCoin[]> => {
     try {
@@ -77,6 +194,7 @@ const fetchRealCryptoData = async (): Promise<CryptoCoin[]> => {
         return [];
     }
 };
+
 const fetchRealForexData = async (): Promise<CryptoCoin[]> => {
     try {
         const response = await fetch('https://api.exchangerate-api.com/v4/latest/USD');
@@ -90,116 +208,6 @@ const fetchRealForexData = async (): Promise<CryptoCoin[]> => {
             return [];
         }
         const rates = data.rates;
-        const currencyDetails: { [key: string]: { name: string; country: string; importance: number } } = {
-            "USD": { name: "US Dollar", country: "US", importance: 100 },
-            "EUR": { name: "Euro", country: "EU", importance: 95 },
-            "GBP": { name: "British Pound", country: "GB", importance: 85 },
-            "JPY": { name: "Japanese Yen", country: "JP", importance: 90 },
-            "CHF": { name: "Swiss Franc", country: "CH", importance: 75 },
-            "CAD": { name: "Canadian Dollar", country: "CA", importance: 70 },
-            "AUD": { name: "Australian Dollar", country: "AU", importance: 65 },
-            "NZD": { name: "New Zealand Dollar", country: "NZ", importance: 60 },
-            "SEK": { name: "Swedish Krona", country: "SE", importance: 55 },
-            "NOK": { name: "Norwegian Krone", country: "NO", importance: 55 },
-            "DKK": { name: "Danish Krone", country: "DK", importance: 50 },
-            "PLN": { name: "Polish Zloty", country: "PL", importance: 45 },
-            "CZK": { name: "Czech Koruna", country: "CZ", importance: 40 },
-            "HUF": { name: "Hungarian Forint", country: "HU", importance: 38 },
-            "TRY": { name: "Turkish Lira", country: "TR", importance: 42 },
-            "ZAR": { name: "South African Rand", country: "ZA", importance: 48 },
-            "MXN": { name: "Mexican Peso", country: "MX", importance: 50 },
-            "BRL": { name: "Brazilian Real", country: "BR", importance: 52 },
-            "CNY": { name: "Chinese Yuan", country: "CN", importance: 88 },
-            "KRW": { name: "South Korean Won", country: "KR", importance: 50 },
-            "SGD": { name: "Singapore Dollar", country: "SG", importance: 58 },
-            "INR": { name: "Indian Rupee", country: "IN", importance: 62 },
-            "RUB": { name: "Russian Ruble", country: "RU", importance: 55 },
-            "HKD": { name: "Hong Kong Dollar", country: "HK", importance: 57 },
-            "ILS": { name: "Israeli Shekel", country: "IL", importance: 45 },
-            "PHP": { name: "Philippine Peso", country: "PH", importance: 35 },
-            "MYR": { name: "Malaysian Ringgit", country: "MY", importance: 40 },
-            "THB": { name: "Thai Baht", country: "TH", importance: 42 },
-            "IDR": { name: "Indonesian Rupiah", country: "ID", importance: 38 },
-            "VND": { name: "Vietnamese Dong", country: "VN", importance: 30 },
-            "AED": { name: "UAE Dirham", country: "AE", importance: 60 },
-            "SAR": { name: "Saudi Riyal", country: "SA", importance: 58 },
-            "QAR": { name: "Qatari Riyal", country: "QA", importance: 55 },
-            "KWD": { name: "Kuwaiti Dinar", country: "KW", importance: 57 },
-            "BHD": { name: "Bahraini Dinar", country: "BH", importance: 54 },
-            "OMR": { name: "Omani Rial", country: "OM", importance: 53 },
-            "EGP": { name: "Egyptian Pound", country: "EG", importance: 30 },
-            "CLP": { name: "Chilean Peso", country: "CL", importance: 32 },
-            "COP": { name: "Colombian Peso", country: "CO", importance: 34 },
-            "PEN": { name: "Peruvian Sol", country: "PE", importance: 31 },
-            "ARS": { name: "Argentine Peso", country: "AR", importance: 25 },
-            "UYU": { name: "Uruguayan Peso", country: "UY", importance: 22 },
-            "PYG": { name: "Paraguayan Guarani", country: "PY", importance: 20 },
-            "DOP": { name: "Dominican Peso", country: "DO", importance: 24 },
-            "GTQ": { name: "Guatemalan Quetzal", country: "GT", importance: 26 },
-            "CRC": { name: "Costa Rican Colon", country: "CR", importance: 28 },
-            "PAB": { name: "Panamanian Balboa", country: "PA", importance: 29 },
-            "SVC": { name: "Salvadoran Colon", country: "SV", importance: 21 },
-            "HNL": { name: "Honduran Lempira", country: "HN", importance: 19 },
-            "NIO": { name: "Nicaraguan Cordoba", country: "NI", importance: 18 },
-            "JMD": { name: "Jamaican Dollar", country: "JM", importance: 23 },
-            "TTD": { name: "Trinidad & Tobago Dollar", country: "TT", importance: 27 },
-            "XCD": { name: "East Caribbean Dollar", country: "XC", importance: 20 },
-            "BBD": { name: "Barbadian Dollar", country: "BB", importance: 22 },
-            "BSD": { name: "Bahamian Dollar", country: "BS", importance: 25 },
-            "BZD": { name: "Belize Dollar", country: "BZ", importance: 19 },
-            "CUP": { name: "Cuban Peso", country: "CU", importance: 15 },
-            "DZD": { name: "Algerian Dinar", country: "DZ", importance: 28 },
-            "MAD": { name: "Moroccan Dirham", country: "MA", importance: 32 },
-            "TND": { name: "Tunisian Dinar", country: "TN", importance: 30 },
-            "GHS": { name: "Ghanaian Cedi", country: "GH", importance: 26 },
-            "KES": { name: "Kenyan Shilling", country: "KE", importance: 29 },
-            "UGX": { name: "Ugandan Shilling", country: "UG", importance: 24 },
-            "TZS": { name: "Tanzanian Shilling", country: "TZ", importance: 25 },
-            "RWF": { name: "Rwandan Franc", country: "RW", importance: 22 },
-            "BIF": { name: "Burundian Franc", country: "BI", importance: 18 },
-            "CDF": { name: "Congolese Franc", country: "CD", importance: 19 },
-            "XAF": { name: "Central African CFA Franc", country: "XA", importance: 20 },
-            "XOF": { name: "West African CFA Franc", country: "XO", importance: 21 },
-            "NGN": { name: "Nigerian Naira", country: "NG", importance: 35 },
-            "GMD": { name: "Gambian Dalasi", country: "GM", importance: 17 },
-            "SLL": { name: "Sierra Leonean Leone", country: "SL", importance: 16 },
-            "LRD": { name: "Liberian Dollar", country: "LR", importance: 15 },
-            "GWP": { name: "Guinea-Bissau Peso", country: "GW", importance: 14 },
-            "CVE": { name: "Cape Verdean Escudo", country: "CV", importance: 19 },
-            "AOA": { name: "Angolan Kwanza", country: "AO", importance: 23 },
-            "ZMW": { name: "Zambian Kwacha", country: "ZM", importance: 24 },
-            "MWK": { name: "Malawian Kwacha", country: "MW", importance: 20 },
-            "BWP": { name: "Botswanan Pula", country: "BW", importance: 28 },
-            "NAD": { name: "Namibian Dollar", country: "NA", importance: 27 },
-            "LSL": { name: "Lesotho Loti", country: "LS", importance: 21 },
-            "SZL": { name: "Swazi Lilangeni", country: "SZ", importance: 22 },
-            "SCR": { name: "Seychellois Rupee", country: "SC", importance: 26 },
-            "MVR": { name: "Maldivian Rufiyaa", country: "MV", importance: 25 },
-            "LKR": { name: "Sri Lankan Rupee", country: "LK", importance: 30 },
-            "PKR": { name: "Pakistani Rupee", country: "PK", importance: 33 },
-            "BDT": { name: "Bangladeshi Taka", country: "BD", importance: 31 },
-            "NPR": { name: "Nepalese Rupee", country: "NP", importance: 27 },
-            "MNT": { name: "Mongolian Tugrik", country: "MN", importance: 24 },
-            "KZT": { name: "Kazakhstani Tenge", country: "KZ", importance: 36 },
-            "UZS": { name: "Uzbekistani Som", country: "UZ", importance: 32 },
-            "KGS": { name: "Kyrgystani Som", country: "KG", importance: 29 },
-            "TJS": { name: "Tajikistani Somoni", country: "TJ", importance: 28 },
-            "GEL": { name: "Georgian Lari", country: "GE", importance: 34 },
-            "AMD": { name: "Armenian Dram", country: "AM", importance: 31 },
-            "AZN": { name: "Azerbaijani Manat", country: "AZ", importance: 35 },
-            "BYN": { name: "Belarusian Ruble", country: "BY", importance: 30 },
-            "UAH": { name: "Ukrainian Hryvnia", country: "UA", importance: 33 },
-            "MDL": { name: "Moldovan Leu", country: "MD", importance: 28 },
-            "BGN": { name: "Bulgarian Lev", country: "BG", importance: 37 },
-            "RON": { name: "Romanian Leu", country: "RO", importance: 39 },
-            "HRK": { name: "Croatian Kuna", country: "HR", importance: 41 },
-            "RSD": { name: "Serbian Dinar", country: "RS", importance: 36 },
-            "MKD": { name: "Macedonian Denar", country: "MK", importance: 32 },
-            "ALL": { name: "Albanian Lek", country: "AL", importance: 30 },
-            "BAM": { name: "Bosnia-Herzegovina Convertible Mark", country: "BA", importance: 34 },
-            "ISK": { name: "Icelandic Krona", country: "IS", importance: 43 },
-            "FJD": { name: "Fijian Dollar", country: "FJ", importance: 29 }
-        };
         const allCurrencies = Object.keys(currencyDetails);
         const currenciesToShow = allCurrencies.map(symbol => ({
             symbol,
@@ -233,6 +241,7 @@ const fetchRealForexData = async (): Promise<CryptoCoin[]> => {
         return [];
     }
 };
+
 const fetchRealForexPairsData = async (): Promise<CryptoCoin[]> => {
     try {
         const response = await fetch('https://api.exchangerate-api.com/v4/latest/USD');
@@ -246,19 +255,7 @@ const fetchRealForexPairsData = async (): Promise<CryptoCoin[]> => {
             return [];
         }
         const rates = data.rates;
-        const allCurrencies = [
-            "USD", "EUR", "GBP", "JPY", "CHF", "CAD", "AUD", "NZD", "SEK", "NOK",
-            "DKK", "PLN", "CZK", "HUF", "TRY", "ZAR", "MXN", "BRL", "CNY", "KRW",
-            "SGD", "INR", "RUB", "HKD", "ILS", "PHP", "MYR", "THB", "IDR", "VND",
-            "AED", "SAR", "QAR", "KWD", "BHD", "OMR", "EGP", "CLP", "COP", "PEN",
-            "ARS", "UYU", "PYG", "DOP", "GTQ", "CRC", "PAB", "SVC", "HNL", "NIO",
-            "JMD", "TTD", "XCD", "BBD", "BSD", "BZD", "CUP", "DZD", "MAD", "TND",
-            "GHS", "KES", "UGX", "TZS", "RWF", "BIF", "CDF", "XAF", "XOF", "NGN",
-            "GMD", "SLL", "LRD", "GWP", "CVE", "MRO", "STD", "AOA", "ZMW", "MWK",
-            "BWP", "NAD", "LSL", "SZL", "SCR", "MVR", "LKR", "PKR", "BDT", "NPR",
-            "MNT", "KZT", "UZS", "KGS", "TJS", "GEL", "AMD", "AZN", "BYN", "UAH",
-            "MDL", "BGN", "RON", "HRK", "RSD", "MKD", "ALL", "BAM", "ISK", "FJD"
-        ];
+        const allCurrencies = Object.keys(currencyDetails);
         const pairsToShow: { base: string; quote: string }[] = [];
         const majorCurrencies = ["USD", "EUR", "GBP", "JPY", "CHF", "CAD", "AUD", "NZD"];
         // Generate major pairs (e.g., EUR/USD, GBP/JPY)
@@ -322,7 +319,9 @@ const fetchRealForexPairsData = async (): Promise<CryptoCoin[]> => {
                     ask: pairRate + spread / 2,
                     spread: spread,
                     category: "forex-pair",
-                    color: change > 0 ? "#22c55e" : "#ef4444"
+                    color: change > 0 ? "#22c55e" : "#ef4444",
+                    baseCountryCode: currencyDetails[pair.base]?.country,
+                    quoteCountryCode: currencyDetails[pair.quote]?.country,
                 });
             } else {
                 console.warn(`Rate for pair ${pair.base}/${pair.quote} not found.`);
@@ -334,6 +333,7 @@ const fetchRealForexPairsData = async (): Promise<CryptoCoin[]> => {
         return [];
     }
 };
+
 const CryptoBubblesUI: React.FC = () => {
     const svgRef = useRef<SVGSVGElement | null>(null);
     const simulationRef = useRef<d3.Simulation<CryptoCoin, undefined> | null>(null);
@@ -408,6 +408,7 @@ const CryptoBubblesUI: React.FC = () => {
         window.addEventListener("resize", handleResize);
         return () => window.removeEventListener("resize", handleResize);
     }, []);
+
     // D3 Rendering with enhanced glassy effects and smoother physics
     useEffect(() => {
         if (!svgRef.current) return;
@@ -510,29 +511,77 @@ const CryptoBubblesUI: React.FC = () => {
             .attr("stroke", function (d: CryptoCoin) { return d.change24h > 0 ? "rgba(34,197,94,0.6)" : "rgba(239,68,68,0.6)"; })
             .attr("stroke-width", 3)
             .style("opacity", 0.9);
-        // Optional logo at the top
+        
+        // Optional logo at the top, or flags for forex pairs
         bubbleGroups.each(function (d) {
             const group = d3.select<SVGGElement, CryptoCoin>(this);
-            if (!d.logoUrl) return;
             const r = d.radius ?? 0;
-            const imgSize = Math.min(r * 0.7, 52);
-            const clipId = `clip-${d.id}`;
-            const localDefs = group.append("defs");
-            localDefs.append("clipPath")
-                .attr("id", clipId)
-                .append("circle")
-                .attr("r", imgSize / 2)
-                .attr("cx", 0)
-                .attr("cy", -r * 0.45);
-            group.append("image")
-                .attr("href", d.logoUrl)
-                .attr("width", imgSize)
-                .attr("height", imgSize)
-                .attr("x", -imgSize / 2)
-                .attr("y", -(r * 0.45) - imgSize / 2)
-                .attr("clip-path", `url(#${clipId})`)
-                .style("pointer-events", "none");
+
+            if (selectedCategory === 'forex-pair' && d.baseCountryCode && d.quoteCountryCode) {
+                const flagSize = Math.min(r * 0.5, 32);
+                const yPos = -r * 0.4;
+
+                // Base currency flag (left)
+                const baseFlagGroup = group.append("g")
+                    .attr("transform", `translate(${-flagSize * 0.4}, ${yPos})`);
+
+                const clipIdBase = `clip-base-${d.id}`;
+                const baseDefs = baseFlagGroup.append("defs");
+                baseDefs.append("clipPath")
+                    .attr("id", clipIdBase)
+                    .append("circle")
+                    .attr("r", flagSize / 2);
+
+                baseFlagGroup.append("image")
+                    .attr("href", `https://flagcdn.com/w40/${d.baseCountryCode.toLowerCase()}.png`)
+                    .attr("width", flagSize)
+                    .attr("height", flagSize)
+                    .attr("x", -flagSize / 2)
+                    .attr("y", -flagSize / 2)
+                    .attr("clip-path", `url(#${clipIdBase})`)
+                    .style("pointer-events", "none");
+
+                // Quote currency flag (right)
+                const quoteFlagGroup = group.append("g")
+                    .attr("transform", `translate(${flagSize * 0.4}, ${yPos})`);
+
+                const clipIdQuote = `clip-quote-${d.id}`;
+                const quoteDefs = quoteFlagGroup.append("defs");
+                quoteDefs.append("clipPath")
+                    .attr("id", clipIdQuote)
+                    .append("circle")
+                    .attr("r", flagSize / 2);
+
+                quoteFlagGroup.append("image")
+                    .attr("href", `https://flagcdn.com/w40/${d.quoteCountryCode.toLowerCase()}.png`)
+                    .attr("width", flagSize)
+                    .attr("height", flagSize)
+                    .attr("x", -flagSize / 2)
+                    .attr("y", -flagSize / 2)
+                    .attr("clip-path", `url(#${clipIdQuote})`)
+                    .style("pointer-events", "none");
+
+            } else if (d.logoUrl) { // It's a crypto coin with a logo
+                const imgSize = Math.min(r * 0.7, 52);
+                const clipId = `clip-${d.id}`;
+                const localDefs = group.append("defs");
+                localDefs.append("clipPath")
+                    .attr("id", clipId)
+                    .append("circle")
+                    .attr("r", imgSize / 2)
+                    .attr("cx", 0)
+                    .attr("cy", -r * 0.45);
+                group.append("image")
+                    .attr("href", d.logoUrl)
+                    .attr("width", imgSize)
+                    .attr("height", imgSize)
+                    .attr("x", -imgSize / 2)
+                    .attr("y", -(r * 0.45) - imgSize / 2)
+                    .attr("clip-path", `url(#${clipId})`)
+                    .style("pointer-events", "none");
+            }
         });
+
         bubbleGroups
             .append("text")
             .attr("class", "symbol-text")
@@ -1009,4 +1058,5 @@ const CryptoBubblesUI: React.FC = () => {
         </div>
     );
 };
+
 export default CryptoBubblesUI;
