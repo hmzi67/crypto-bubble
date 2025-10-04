@@ -523,7 +523,7 @@ const CryptoBubblesUI: React.FC = () => {
 
                 // Base currency flag (left)
                 const baseFlagGroup = group.append("g")
-                    .attr("transform", `translate(${-flagSize * 0.4}, ${yPos})`);
+                    .attr("transform", `translate(${-flagSize * 0.6}, ${yPos})`);
 
                 const clipIdBase = `clip-base-${d.id}`;
                 const baseDefs = baseFlagGroup.append("defs");
@@ -543,7 +543,7 @@ const CryptoBubblesUI: React.FC = () => {
 
                 // Quote currency flag (right)
                 const quoteFlagGroup = group.append("g")
-                    .attr("transform", `translate(${flagSize * 0.4}, ${yPos})`);
+                    .attr("transform", `translate(${flagSize * 0.6}, ${yPos})`);
 
                 const clipIdQuote = `clip-quote-${d.id}`;
                 const quoteDefs = quoteFlagGroup.append("defs");
