@@ -11,6 +11,8 @@ type CryptoCoin = {
     price: number;
     volume24h?: number;
     rank?: number;
+    // URL of the logo/icon to show inside the bubble when available
+    logoUrl?: string;
     radius?: number;
     x?: number;
     y?: number;
@@ -31,6 +33,7 @@ type CoinGeckoCoin = {
     id: string;
     symbol: string;
     name: string;
+    image: string;
     current_price: number;
     price_change_percentage_24h: number | null;
     market_cap: number;
@@ -66,7 +69,8 @@ const fetchRealCryptoData = async (): Promise<CryptoCoin[]> => {
             volume24h: coin.total_volume,
             rank: coin.market_cap_rank,
             category: "crypto",
-            color: (coin.price_change_percentage_24h ?? 0) > 0 ? "#22c55e" : "#ef4444"
+            color: (coin.price_change_percentage_24h ?? 0) > 0 ? "#22c55e" : "#ef4444",
+            logoUrl: coin.image
         }));
     } catch (err) {
         console.error("Error fetching real crypto ", err);
@@ -462,75 +466,24 @@ const CryptoBubblesUI: React.FC = () => {
             .alphaMin(0.001);
 
         simulationRef.current = simulation;
-        // --- Gradients and Filters (Enhanced) ---
+        // --- Minimal defs for neon rim glow (green/red) ---
         const defs = svg.append("defs");
-        // --- Enhanced Glass Gradients ---
-        const createGlassGradient = (id: string, primaryColor: string, secondaryColor: string) => {
-            const gradient = defs.append("radialGradient")
+        const addNeon = (id: string, color: string) => {
+            const f = defs.append("filter")
                 .attr("id", id)
-                .attr("cx", "25%")
-                .attr("cy", "20%")
-                .attr("r", "80%");
-            // More complex gradient stops for richer refraction
-            gradient.append("stop").attr("offset", "0%").attr("stop-color", "rgba(255, 255, 255, 0.95)").attr("stop-opacity", 0.7);
-            gradient.append("stop").attr("offset", "10%").attr("stop-color", "rgba(255, 255, 255, 0.85)").attr("stop-opacity", 0.5);
-            gradient.append("stop").attr("offset", "25%").attr("stop-color", "rgba(255, 255, 255, 0.75)").attr("stop-opacity", 0.3);
-            gradient.append("stop").attr("offset", "45%").attr("stop-color", primaryColor).attr("stop-opacity", 0.6);
-            gradient.append("stop").attr("offset", "65%").attr("stop-color", secondaryColor).attr("stop-opacity", 0.5);
-            gradient.append("stop").attr("offset", "85%").attr("stop-color", secondaryColor).attr("stop-opacity", 0.7);
-            gradient.append("stop").attr("offset", "100%").attr("stop-color", "rgba(0, 0, 0, 0.1)").attr("stop-opacity", 0.9);
+                .attr("x", "-150%")
+                .attr("y", "-150%")
+                .attr("width", "400%")
+                .attr("height", "400%");
+            f.append("feDropShadow")
+                .attr("dx", "0")
+                .attr("dy", "0")
+                .attr("stdDeviation", "6")
+                .attr("flood-color", color)
+                .attr("flood-opacity", "0.9");
         };
-        createGlassGradient("glass-positive", "rgba(34, 197, 94, 0.85)", "rgba(16, 185, 129, 0.95)");
-        createGlassGradient("glass-negative", "rgba(239, 68, 68, 0.85)", "rgba(220, 38, 38, 0.95)");
-        createGlassGradient("glass-forex-major", "rgba(16, 185, 129, 0.85)", "rgba(5, 150, 105, 0.95)");
-        createGlassGradient("glass-forex-minor", "rgba(59, 130, 246, 0.85)", "rgba(37, 99, 235, 0.95)");
-        createGlassGradient("glass-forex-exotic", "rgba(147, 51, 234, 0.85)", "rgba(126, 34, 206, 0.95)");
-        createGlassGradient("glass-forex-pair", "rgba(245, 158, 11, 0.85)", "rgba(217, 119, 6, 0.95)");
-        // --- Enhanced Glow Filter ---
-        const glowFilter = defs.append("filter")
-            .attr("id", "enhanced-glow")
-            .attr("x", "-100%")
-            .attr("y", "-100%")
-            .attr("width", "300%")
-            .attr("height", "300%");
-        glowFilter.append("feGaussianBlur").attr("stdDeviation", "4").attr("result", "coloredBlur");
-        glowFilter.append("feColorMatrix")
-            .attr("type", "matrix")
-            .attr("values", "1 0 0 0 0 0 1 0 0 0 0 0 1 0 0 0 0 0 1 0")
-            .attr("result", "glowColor");
-        const feMerge = glowFilter.append("feMerge");
-        feMerge.append("feMergeNode").attr("in", "glowColor");
-        feMerge.append("feMergeNode").attr("in", "SourceGraphic");
-        // --- Reflection Filter (Remains the same) ---
-        const reflectionFilter = defs.append("filter")
-            .attr("id", "glass-reflection")
-            .attr("x", "-50%")
-            .attr("y", "-50%")
-            .attr("width", "200%")
-            .attr("height", "200%");
-        reflectionFilter.append("feGaussianBlur").attr("stdDeviation", "1.5").attr("result", "blur");
-        reflectionFilter.append("feSpecularLighting")
-            .attr("result", "specOut")
-            .attr("in", "blur")
-            .attr("specularConstant", "1.5")
-            .attr("specularExponent", "20")
-            .attr("lighting-color", "#ffffff")
-            .append("fePointLight")
-            .attr("x", "-50")
-            .attr("y", "-50")
-            .attr("z", "200");
-        // --- New Drop Shadow Filter ---
-        const dropShadowFilter = defs.append("filter")
-            .attr("id", "bubble-drop-shadow")
-            .attr("x", "-50%")
-            .attr("y", "-50%")
-            .attr("width", "200%")
-            .attr("height", "200%");
-        dropShadowFilter.append("feDropShadow")
-            .attr("dx", "0")
-            .attr("dy", "2")
-            .attr("stdDeviation", "4")
-            .attr("flood-color", "rgba(0, 0, 0, 0.4)");
+        addNeon("neon-green-glow", "#22c55e");
+        addNeon("neon-red-glow", "#ef4444");
         // --- Bubble Elements (Enhanced) ---
         const bubbleGroups = svg
             .selectAll<SVGGElement, CryptoCoin>(".bubble-group")
@@ -538,135 +491,57 @@ const CryptoBubblesUI: React.FC = () => {
             .enter()
             .append("g")
             .attr("class", "bubble-group")
-            .style("cursor", "grab")
-            .style("filter", "url(#bubble-drop-shadow)"); // Apply drop shadow to group
-        // --- Atmospheric Glow ---
+            .style("cursor", "grab");
+        // Core transparent bubble
         bubbleGroups
             .append("circle")
-            .attr("class", "atmospheric-glow")
-            .attr("r", (d) => (d.radius ?? 0) + 15)
-            .attr("fill", "none")
-            .attr("stroke", (d) => {
-                if (selectedCategory === "crypto") return d.change24h > 0 ? "#22c55e" : "#ef4444";
-                if (d.category === "major") return "#10b981";
-                if (d.category === "minor") return "#3b82f6";
-                if (d.category === "forex-pair") return "#f59e0b";
-                return "#8b5cf6";
-            })
-            .attr("stroke-width", 2)
-            .style("opacity", 0.1)
-            .style("animation", "pulse 3s ease-in-out infinite alternate");
-        // --- Mid Glow ---
-        bubbleGroups
-            .append("circle")
-            .attr("class", "mid-glow")
-            .attr("r", (d) => (d.radius ?? 0) + 8)
-            .attr("fill", "none")
-            .attr("stroke", (d) => {
-                if (selectedCategory === "crypto") return d.change24h > 0 ? "#22c55e" : "#ef4444";
-                if (d.category === "major") return "#10b981";
-                if (d.category === "minor") return "#3b82f6";
-                if (d.category === "forex-pair") return "#f59e0b";
-                return "#8b5cf6";
-            })
-            .attr("stroke-width", 3)
-            .style("opacity", 0.3)
-            .style("filter", "blur(6px)");
-        // --- Inner Glow (New) ---
-        bubbleGroups
-            .append("circle")
-            .attr("class", "inner-glow")
-            .attr("r", (d) => (d.radius ?? 0) - 2)
-            .attr("fill", "none")
-            .attr("stroke", "rgba(255, 255, 255, 0.1)")
-            .attr("stroke-width", 2)
-            .style("opacity", 0.2)
-            .style("filter", "blur(1px)");
-        // --- Main Bubble ---
-        bubbleGroups
-            .append("circle")
-            .attr("class", "main-bubble")
+            .attr("class", "bubble-core")
             .attr("r", (d) => d.radius ?? 0)
-            .attr("fill", (d) => {
-                // Use same gradient for all categories, based on change24h
-                return d.change24h > 0 ? "url(#glass-positive)" : "url(#glass-negative)";
-            })
-            .attr("stroke", (d) => {
-                // Use same stroke for all categories, based on change24h
-                return d.change24h > 0 ? "#22c55e" : "#ef4444";
-            })
-            .attr("stroke-width", 2.5)
-            .style("opacity", 0.85)
-            .style("filter", "url(#enhanced-glow)")
-            .style("backdrop-filter", "blur(10px)");
-        // --- Highlights with Dynamic Positions ---
-        bubbleGroups
-            .append("ellipse")
-            .attr("class", "primary-highlight")
-            .attr("cx", (d) => {
-                const baseOffset = -(d.radius ?? 0) * 0.25;
-                const jitter = (Math.random() - 0.5) * (d.radius ?? 0) * 0.1; // Add slight randomness
-                return baseOffset + jitter;
-            })
-            .attr("cy", (d) => {
-                const baseOffset = -(d.radius ?? 0) * 0.35;
-                const jitter = (Math.random() - 0.5) * (d.radius ?? 0) * 0.1;
-                return baseOffset + jitter;
-            })
-            .attr("rx", (d) => (d.radius ?? 0) * 0.45)
-            .attr("ry", (d) => (d.radius ?? 0) * 0.25)
-            .attr("fill", "rgba(255, 255, 255, 0.7)")
-            .style("opacity", 0.9)
-            .style("filter", "blur(2px)");
+            .attr("fill", "rgba(0, 0, 0, 0.35)")
+            .attr("stroke", (d) => (d.change24h > 0 ? "#22c55e" : "#ef4444"))
+            .attr("stroke-width", 3)
+            .style("filter", function (d: CryptoCoin) { return d.change24h > 0 ? "url(#neon-green-glow)" : "url(#neon-red-glow)"; });
+        // Subtle outer rim
         bubbleGroups
             .append("circle")
-            .attr("class", "secondary-highlight")
-            .attr("cx", (d) => {
-                const baseOffset = (d.radius ?? 0) * 0.3;
-                const jitter = (Math.random() - 0.5) * (d.radius ?? 0) * 0.1;
-                return baseOffset + jitter;
-            })
-            .attr("cy", (d) => {
-                const baseOffset = -(d.radius ?? 0) * 0.2;
-                const jitter = (Math.random() - 0.5) * (d.radius ?? 0) * 0.1;
-                return baseOffset + jitter;
-            })
-            .attr("r", (d) => (d.radius ?? 0) * 0.18)
-            .attr("fill", "rgba(255, 255, 255, 0.5)")
-            .style("opacity", 0.8)
-            .style("filter", "blur(1.5px)");
-        bubbleGroups
-            .append("circle")
-            .attr("class", "sparkle-highlight")
-            .attr("cx", (d) => -(d.radius ?? 0) * 0.4)
-            .attr("cy", (d) => (d.radius ?? 0) * 0.3)
-            .attr("r", (d) => (d.radius ?? 0) * 0.08)
-            .attr("fill", "rgba(255, 255, 255, 0.9)")
-            .style("opacity", 0.7)
-            .style("filter", "blur(0.5px)");
-        bubbleGroups
-            .append("circle")
-            .attr("class", "inner-rim")
-            .attr("r", (d) => (d.radius ?? 0) - 4)
+            .attr("class", "bubble-rim")
+            .attr("r", (d) => (d.radius ?? 0) + 4)
             .attr("fill", "none")
-            .attr("stroke", "rgba(255, 255, 255, 0.3)")
-            .attr("stroke-width", 1.5)
-            .style("opacity", 0.6);
+            .attr("stroke", function (d: CryptoCoin) { return d.change24h > 0 ? "rgba(34,197,94,0.6)" : "rgba(239,68,68,0.6)"; })
+            .attr("stroke-width", 3)
+            .style("opacity", 0.9);
+        // Optional logo at the top
+        bubbleGroups.each(function (d) {
+            const group = d3.select<SVGGElement, CryptoCoin>(this);
+            if (!d.logoUrl) return;
+            const r = d.radius ?? 0;
+            const imgSize = Math.min(r * 0.7, 52);
+            const clipId = `clip-${d.id}`;
+            const localDefs = group.append("defs");
+            localDefs.append("clipPath")
+                .attr("id", clipId)
+                .append("circle")
+                .attr("r", imgSize / 2)
+                .attr("cx", 0)
+                .attr("cy", -r * 0.45);
+            group.append("image")
+                .attr("href", d.logoUrl)
+                .attr("width", imgSize)
+                .attr("height", imgSize)
+                .attr("x", -imgSize / 2)
+                .attr("y", -(r * 0.45) - imgSize / 2)
+                .attr("clip-path", `url(#${clipId})`)
+                .style("pointer-events", "none");
+        });
         bubbleGroups
             .append("text")
             .attr("class", "symbol-text")
             .attr("text-anchor", "middle")
-            .attr("dy", selectedCategory === 'forex-pair' ? "-0.5em" : "-0.2em")
+            .attr("dy", selectedCategory === 'forex-pair' ? "-0.1em" : "0.2em")
             .style("font-family", "Inter, -apple-system, BlinkMacSystemFont, sans-serif")
             .style("font-weight", "900")
-            .style("font-size", (d) => `${Math.min((d.radius ?? 0) * 0.32, 22)}px`)
-            .style("fill", "#ffffff")
-            .style("text-shadow", `
-                0 0 10px rgba(0,0,0,0.9),
-                0 0 20px rgba(0,0,0,0.8),
-                0 2px 4px rgba(0,0,0,0.7),
-                0 0 3px rgba(255,255,255,0.3)
-            `)
+            .style("font-size", (d) => `${Math.min((d.radius ?? 0) * 0.34, 28)}px`)
+            .style("fill", "#e5e7eb")
             .style("pointer-events", "none")
             .style("letter-spacing", "0.05em")
             .text((d) => {
@@ -682,16 +557,11 @@ const CryptoBubblesUI: React.FC = () => {
                 .append("text")
                 .attr("class", "rate-text")
                 .attr("text-anchor", "middle")
-                .attr("dy", selectedCategory === 'forex-pair' ? "0.3em" : "0.5em")
+                .attr("dy", selectedCategory === 'forex-pair' ? "0.9em" : "1.0em")
                 .style("font-family", "JetBrains Mono, Monaco, Consolas, monospace")
                 .style("font-weight", "700")
                 .style("font-size", (d) => `${Math.min((d.radius ?? 0) * 0.16, 12)}px`)
-                .style("fill", "#f8fafc")
-                .style("text-shadow", `
-                    0 0 8px rgba(0,0,0,0.9),
-                    0 1px 2px rgba(0,0,0,0.8),
-                    0 0 2px rgba(255,255,255,0.2)
-                `)
+                .style("fill", "#cbd5e1")
                 .style("pointer-events", "none")
                 .text((d) => {
                     if (d.currentRate) {
@@ -707,16 +577,11 @@ const CryptoBubblesUI: React.FC = () => {
             .append("text")
             .attr("class", "change-text")
             .attr("text-anchor", "middle")
-            .attr("dy", (selectedCategory === 'forex' || selectedCategory === 'forex-pair') ? "1.2em" : "0.8em")
+            .attr("dy", (selectedCategory === 'forex' || selectedCategory === 'forex-pair') ? "1.8em" : "1.4em")
             .style("font-family", "Inter, -apple-system, BlinkMacSystemFont, sans-serif")
             .style("font-weight", "800")
-            .style("font-size", (d) => `${Math.min((d.radius ?? 0) * 0.20, 13)}px`)
+            .style("font-size", (d) => `${Math.min((d.radius ?? 0) * 0.20, 16)}px`)
             .style("fill", (d) => (d.change24h > 0 ? "#22c55e" : "#ef4444"))
-            .style("text-shadow", (d) => `
-                0 0 8px rgba(0,0,0,0.9),
-                0 1px 3px rgba(0,0,0,0.7),
-                0 0 15px ${d.change24h > 0 ? "rgba(34, 197, 94, 0.3)" : "rgba(239, 68, 68, 0.3)"}
-            `)
             .style("pointer-events", "none")
             .text((d) => `${d.change24h > 0 ? "+" : ""}${d.change24h.toFixed(2)}%`);
         // --- Enhanced Drag Behavior ---
@@ -728,19 +593,18 @@ const CryptoBubblesUI: React.FC = () => {
                 d.fy = d.y;
                 const group = d3.select(this);
                 group.style("cursor", "grabbing");
-                group.select(".main-bubble")
+                group.select(".bubble-core")
                     .transition()
                     .duration(350)
                     .ease(d3.easeCubicOut)
-                    .attr("r", ((d.radius ?? 0) * 1.13))
-                    .style("opacity", 1)
+                    .attr("r", ((d.radius ?? 0) * 1.08))
                     .attr("stroke-width", 4);
-                group.select(".atmospheric-glow")
+                group.select(".bubble-rim")
                     .transition()
                     .duration(350)
                     .ease(d3.easeCubicOut)
-                    .attr("r", ((d.radius ?? 0) + 28))
-                    .style("opacity", 0.33);
+                    .attr("r", ((d.radius ?? 0) + 8))
+                    .style("opacity", 1);
             })
             .on("drag", function (event, d) {
                 d.fx = event.x;
@@ -752,19 +616,18 @@ const CryptoBubblesUI: React.FC = () => {
                 d.fy = null;
                 const group = d3.select(this);
                 group.style("cursor", "grab");
-                group.select(".main-bubble")
+                group.select(".bubble-core")
                     .transition()
                     .duration(500)
                     .ease(d3.easeCubicInOut)
                     .attr("r", d.radius ?? 0)
-                    .style("opacity", 0.85)
-                    .attr("stroke-width", 2.5);
-                group.select(".atmospheric-glow")
+                    .attr("stroke-width", 3);
+                group.select(".bubble-rim")
                     .transition()
                     .duration(500)
                     .ease(d3.easeCubicInOut)
-                    .attr("r", ((d.radius ?? 0) + 15))
-                    .style("opacity", 0.1);
+                    .attr("r", ((d.radius ?? 0) + 4))
+                    .style("opacity", 0.9);
             });
         bubbleGroups.each(function () {
             d3.select<SVGGElement, CryptoCoin>(this).call(drag);
@@ -774,29 +637,18 @@ const CryptoBubblesUI: React.FC = () => {
             .on("mouseenter", function (_event, d) {
                 const group = d3.select(this);
                 const radius = d.radius ?? 0;
-                group.select(".main-bubble")
+                const filterId = d.change24h > 0 ? "url(#neon-green-glow)" : "url(#neon-red-glow)";
+                group.select(".bubble-core")
                     .transition()
                     .duration(200)
                     .attr("stroke-width", 4)
-                    .style("opacity", 1)
-                    .style("filter", "url(#enhanced-glow) brightness(1.2)");
-                group.select(".mid-glow")
+                    .style("filter", filterId);
+                group.select(".bubble-rim")
                     .transition()
                     .duration(200)
-                    .style("opacity", 0.5)
-                    .attr("r", radius + 12)
+                    .style("opacity", 1)
+                    .attr("r", radius + 8)
                     .attr("stroke-width", 4);
-                group.select(".atmospheric-glow")
-                    .transition()
-                    .duration(200)
-                    .style("opacity", 0.2)
-                    .attr("r", radius + 20);
-                group.select(".primary-highlight")
-                    .transition()
-                    .duration(200)
-                    .style("opacity", 1)
-                    .attr("rx", radius * 0.5)
-                    .attr("ry", radius * 0.3);
                 group.selectAll("text")
                     .transition()
                     .duration(200)
@@ -805,29 +657,18 @@ const CryptoBubblesUI: React.FC = () => {
             .on("mouseleave", function (_event, d) {
                 const group = d3.select(this);
                 const radius = d.radius ?? 0;
-                group.select(".main-bubble")
+                const filterIdLeave = d.change24h > 0 ? "url(#neon-green-glow)" : "url(#neon-red-glow)";
+                group.select(".bubble-core")
                     .transition()
                     .duration(300)
-                    .attr("stroke-width", 2.5)
-                    .style("opacity", 0.85)
-                    .style("filter", "url(#enhanced-glow)");
-                group.select(".mid-glow")
-                    .transition()
-                    .duration(300)
-                    .style("opacity", 0.3)
-                    .attr("r", radius + 8)
-                    .attr("stroke-width", 3);
-                group.select(".atmospheric-glow")
-                    .transition()
-                    .duration(300)
-                    .style("opacity", 0.1)
-                    .attr("r", radius + 15);
-                group.select(".primary-highlight")
+                    .attr("stroke-width", 3)
+                    .style("filter", filterIdLeave);
+                group.select(".bubble-rim")
                     .transition()
                     .duration(300)
                     .style("opacity", 0.9)
-                    .attr("rx", radius * 0.45)
-                    .attr("ry", radius * 0.25);
+                    .attr("r", radius + 4)
+                    .attr("stroke-width", 3);
                 group.selectAll("text")
                     .transition()
                     .duration(300)
@@ -837,11 +678,12 @@ const CryptoBubblesUI: React.FC = () => {
                 setSelectedBubble(d);
                 const group = d3.select(this);
                 const radius = d.radius ?? 0;
+                const strokeColor = d.change24h > 0 ? "#22c55e" : "#ef4444";
                 const clickRipple = group
                     .append("circle")
                     .attr("r", 0)
                     .attr("fill", "none")
-                    .attr("stroke", d.color || "#22c55e")
+                    .attr("stroke", strokeColor)
                     .attr("stroke-width", 4)
                     .style("opacity", 1);
                 clickRipple
@@ -852,23 +694,20 @@ const CryptoBubblesUI: React.FC = () => {
                     .style("opacity", 0)
                     .style("stroke-width", 1)
                     .remove();
-                group.select(".main-bubble")
+                group.select(".bubble-core")
                     .transition()
                     .duration(150)
-                    .style("opacity", 1)
+                    .attr("stroke-width", 5)
                     .transition()
                     .duration(150)
-                    .style("opacity", 0.85);
+                    .attr("stroke-width", 3);
             });
         // --- Update Positions on Tick ---
         simulation.on("tick", () => {
             bubbleGroups.attr("transform", (d) => `translate(${d.x || 0}, ${d.y || 0})`);
         });
-        // --- Micro-interaction: Shimmer Effect ---
-        const shimmerTimer = d3.timer(() => {
-            bubbleGroups.selectAll<SVGCircleElement, CryptoCoin>(".primary-highlight")
-                .style("opacity", () => 0.8 + Math.random() * 0.2); // Random opacity between 0.8 and 1.0
-        });
+        // No shimmer needed for the minimal design
+        const shimmerTimer = d3.timer(() => { });
         return () => {
             if (simulation) {
                 simulation.stop();
@@ -1081,24 +920,25 @@ const CryptoBubblesUI: React.FC = () => {
                 )}
             </div>
             {selectedBubble && (
-                <div className="fixed bottom-6 right-6 bg-gray-900/95 backdrop-blur-xl border border-gray-700/50 rounded-2xl p-8 shadow-2xl max-w-sm z-50 transform transition-all duration-300 animate-in slide-in-from-right">
-                    <div className="flex items-center justify-between mb-6">
+                <div className="fixed bottom-8 right-8 bg-gray-800/95 backdrop-blur-lg border border-gray-700/40 rounded-3xl shadow-2xl max-w-md z-50 p-6 flex flex-col gap-4 animate-in slide-in-from-right">
+                    <div className="flex items-center justify-between mb-2">
                         <div className="flex items-center gap-3">
-                            <div className={`w-5 h-5 rounded-full animate-pulse shadow-lg ${selectedBubble.change24h > 0 ? 'bg-gradient-to-r from-green-400 to-green-600' : 'bg-gradient-to-r from-red-400 to-red-600'
-                                }`}></div>
+                            {selectedBubble.logoUrl && (
+                                <img src={selectedBubble.logoUrl} alt={selectedBubble.symbol} className="w-10 h-10 rounded-full border border-gray-700/60 bg-gray-900/60" />
+                            )}
                             <div>
-                                <h3 className="text-white text-xl font-bold">{selectedBubble.name}</h3>
-                                <p className="text-gray-400 text-sm flex items-center gap-2">
-                                    <span className="font-mono">{selectedBubble.symbol}</span>
+                                <div className="flex items-center gap-2">
+                                    <span className="text-white text-xl font-bold">{selectedBubble.name}</span>
                                     {selectedBubble.category && (
-                                        <span className={`px-3 py-1 rounded-full text-xs font-semibold ${selectedBubble.category === 'crypto' ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30' :
-                                            selectedBubble.category === 'major' ? 'bg-green-500/20 text-green-400 border border-green-500/30' :
-                                                selectedBubble.category === 'minor' ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30' :
-                                                    selectedBubble.category === 'forex-pair' ? 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/30' :
-                                                        'bg-purple-500/20 text-purple-400 border border-purple-500/30'
+                                        <span className={`px-2 py-1 rounded-full text-xs font-semibold border ${selectedBubble.category === 'crypto' ? 'bg-blue-700/20 text-blue-300 border-blue-700/40' :
+                                            selectedBubble.category === 'major' ? 'bg-green-700/20 text-green-300 border-green-700/40' :
+                                                selectedBubble.category === 'minor' ? 'bg-blue-700/20 text-blue-300 border-blue-700/40' :
+                                                    selectedBubble.category === 'forex-pair' ? 'bg-yellow-700/20 text-yellow-300 border-yellow-700/40' :
+                                                        'bg-purple-700/20 text-purple-300 border-purple-700/40'
                                             }`}>{selectedBubble.category.toUpperCase()}</span>
                                     )}
-                                </p>
+                                </div>
+                                <div className="text-gray-400 text-sm font-mono">{selectedBubble.symbol}</div>
                             </div>
                         </div>
                         <button
@@ -1108,85 +948,61 @@ const CryptoBubblesUI: React.FC = () => {
                             ✕
                         </button>
                     </div>
-                    <div className="space-y-4">
-                        {selectedCategory === 'crypto' ? (
-                            <>
-                                <div className="flex justify-between items-center py-2 border-b border-gray-800/50">
-                                    <span className="text-gray-400 font-medium">Price:</span>
-                                    <span className="text-white font-bold text-lg font-mono">
-                                        ${selectedBubble.price >= 1
-                                            ? selectedBubble.price.toLocaleString(undefined, { maximumFractionDigits: 2 })
-                                            : selectedBubble.price.toFixed(6)
-                                        }
-                                    </span>
-                                </div>
-                                <div className="flex justify-between items-center py-2 border-b border-gray-800/50">
-                                    <span className="text-gray-400 font-medium">Market Cap:</span>
-                                    <span className="text-white font-bold text-lg">
-                                        ${(selectedBubble.marketCap / 1e9).toFixed(1)}B
-                                    </span>
-                                </div>
-                                {selectedBubble.rank && (
-                                    <div className="flex justify-between items-center py-2 border-b border-gray-800/50">
-                                        <span className="text-gray-400 font-medium">Rank:</span>
-                                        <span className="text-white font-bold text-lg">#{selectedBubble.rank}</span>
-                                    </div>
-                                )}
-                            </>
-                        ) : (
-                            <>
-                                <div className="flex justify-between items-center py-2 border-b border-gray-800/50">
-                                    <span className="text-gray-400 font-medium">Current Rate:</span>
-                                    <span className="text-white font-bold text-lg font-mono">
-                                        {selectedBubble.currentRate?.toFixed(4) || "N/A"}
-                                    </span>
-                                </div>
-                                {selectedBubble.bid && selectedBubble.ask && (
-                                    <>
-                                        <div className="grid grid-cols-2 gap-4">
-                                            <div className="text-center p-3 bg-green-500/10 rounded-lg border border-green-500/20">
-                                                <span className="text-green-400 text-xs font-medium block">BID</span>
-                                                <span className="text-green-400 font-bold text-sm font-mono">{selectedBubble.bid.toFixed(4)}</span>
-                                            </div>
-                                            <div className="text-center p-3 bg-red-500/10 rounded-lg border border-red-500/20">
-                                                <span className="text-red-400 text-xs font-medium block">ASK</span>
-                                                <span className="text-red-400 font-bold text-sm font-mono">{selectedBubble.ask.toFixed(4)}</span>
-                                            </div>
-                                        </div>
-                                        <div className="flex justify-between items-center py-2 border-b border-gray-800/50">
-                                            <span className="text-gray-400 font-medium">Spread:</span>
-                                            <span className="text-white font-bold">
-                                                {selectedBubble.spread !== undefined
-                                                    ? `${(selectedBubble.spread * 10000).toFixed(1)} pips`
-                                                    : "N/A"}
-                                            </span>
-                                        </div>
-                                    </>
-                                )}
-                                <div className="flex justify-between items-center py-2 border-b border-gray-800/50">
-                                    <span className="text-gray-400 font-medium">Volume 24h:</span>
-                                    <span className="text-white font-bold text-lg">
-                                        {selectedBubble.volume24h !== undefined
-                                            ? `$${(selectedBubble.volume24h / 1e9).toFixed(1)}B`
-                                            : "N/A"}
-                                    </span>
-                                </div>
-                            </>
-                        )}
-                        <div className="flex justify-between items-center pt-4 border-t border-gray-700/50">
-                            <span className="text-gray-400 font-medium">24h Change:</span>
-                            <span className={`font-bold text-lg flex items-center gap-2 ${selectedBubble.change24h >= 0 ? "text-green-400" : "text-red-400"
-                                }`}>
-                                <span className="text-xl">{selectedBubble.change24h >= 0 ? "📈" : "📉"}</span>
-                                {selectedBubble.change24h >= 0 ? "+" : ""}{selectedBubble.change24h.toFixed(2)}%
-                            </span>
+                    {selectedCategory === 'crypto' ? (
+                        <div className="grid grid-cols-3 gap-4 text-center py-2">
+                            <div>
+                                <div className="text-xs text-gray-400">Rank</div>
+                                <div className="text-lg font-bold text-yellow-400">{selectedBubble.rank ? `#${selectedBubble.rank}` : '-'}</div>
+                            </div>
+                            <div>
+                                <div className="text-xs text-gray-400">Market Cap</div>
+                                <div className="text-lg font-bold text-blue-300">${(selectedBubble.marketCap / 1e9).toFixed(1)}B</div>
+                            </div>
+                            <div>
+                                <div className="text-xs text-gray-400">24h Volume</div>
+                                <div className="text-lg font-bold text-green-300">{selectedBubble.volume24h ? `$${(selectedBubble.volume24h / 1e9).toFixed(1)}B` : '-'}</div>
+                            </div>
                         </div>
+                    ) : (
+                        <div className="flex flex-col gap-2 py-2">
+                            <div className="flex items-center gap-2 justify-between">
+                                <span className="text-gray-400 text-sm">Current Rate:</span>
+                                <span className="text-white font-mono text-lg font-bold">{selectedBubble.currentRate?.toFixed(4) || 'N/A'}</span>
+                            </div>
+                            <div className="flex gap-2">
+                                <div className="flex-1 text-center p-2 rounded-lg border border-green-700/40 bg-green-900/20">
+                                    <div className="text-xs text-green-400 font-bold">BID</div>
+                                    <div className="text-green-300 font-mono text-lg font-bold">{selectedBubble.bid?.toFixed(4) || '-'}</div>
+                                </div>
+                                <div className="flex-1 text-center p-2 rounded-lg border border-red-700/40 bg-red-900/20">
+                                    <div className="text-xs text-red-400 font-bold">ASK</div>
+                                    <div className="text-red-300 font-mono text-lg font-bold">{selectedBubble.ask?.toFixed(4) || '-'}</div>
+                                </div>
+                            </div>
+                            <div className="flex items-center gap-2 justify-between">
+                                <span className="text-gray-400 text-sm">Spread:</span>
+                                <span className="text-white font-mono font-bold">{selectedBubble.spread !== undefined ? `${(selectedBubble.spread * 10000).toFixed(1)} pips` : '-'}</span>
+                            </div>
+                            <div className="flex items-center gap-2 justify-between">
+                                <span className="text-gray-400 text-sm">Volume 24h:</span>
+                                <span className="text-white font-mono font-bold">{selectedBubble.volume24h !== undefined ? `$${(selectedBubble.volume24h / 1e9).toFixed(1)}B` : '-'}</span>
+                            </div>
+                        </div>
+                    )}
+                    <div className="flex items-center gap-2 justify-between py-2 border-t border-gray-700/40">
+                        <span className="text-gray-400 text-sm">24h Change:</span>
+                        <span className={`font-bold text-lg flex items-center gap-2 ${selectedBubble.change24h >= 0 ? "text-green-400" : "text-red-400"}`}>
+                            {selectedBubble.change24h >= 0 ? (
+                                <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M4 12L8.5 7.5L12 11L16 6" stroke="#22c55e" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /><circle cx="16" cy="6" r="2" fill="#22c55e" /></svg>
+                            ) : (
+                                <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M4 8L8.5 12.5L12 9L16 14" stroke="#ef4444" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /><circle cx="16" cy="14" r="2" fill="#ef4444" /></svg>
+                            )}
+                            {selectedBubble.change24h >= 0 ? '+' : ''}{selectedBubble.change24h.toFixed(2)}%
+                        </span>
                     </div>
-                    <div className="mt-6 pt-4 border-t border-gray-700/50 text-xs text-gray-500 bg-gray-800/30 rounded-lg p-3">
-                        <div className="flex justify-between items-center">
-                            <span>Last Updated:</span>
-                            <span className="font-mono text-blue-400">{getCurrentTimeUTC()}</span>
-                        </div>
+                    <div className="flex items-center justify-between text-xs text-gray-400 bg-gray-900/60 rounded-lg px-3 py-2 mt-2">
+                        <span>Last Updated:</span>
+                        <span className="font-mono text-blue-400">{getCurrentTimeUTC()}</span>
                     </div>
                 </div>
             )}
