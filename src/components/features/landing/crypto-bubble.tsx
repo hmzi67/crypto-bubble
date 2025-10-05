@@ -343,6 +343,26 @@ const fetchRealForexPairsData = async (): Promise<CryptoCoin[]> => {
     }
 };
 
+// Helper function for market action strength colors
+const getMarketColor = (change: number): string => {
+    const absChange = Math.abs(change);
+
+    // Define color intensity thresholds
+    if (absChange >= 5) {
+        // Strong movement - bright colors
+        return change >= 0 ? "#10b981" : "#f87171"; // emerald-500 / red-400
+    } else if (absChange >= 2) {
+        // Moderate movement - medium colors
+        return change >= 0 ? "#34d399" : "#fca5a5"; // emerald-400 / red-300
+    } else if (absChange > 0) {
+        // Weak movement - muted colors
+        return change >= 0 ? "#6ee7b7" : "#fecaca"; // emerald-300 / red-200
+    } else {
+        // No movement - neutral gray
+        return "#9ca3af"; // gray-400
+    }
+};
+
 const CryptoBubblesUI: React.FC = () => {
     const svgRef = useRef<SVGSVGElement | null>(null);
     const simulationRef = useRef<d3.Simulation<CryptoCoin, undefined> | null>(null);
@@ -518,19 +538,35 @@ const CryptoBubblesUI: React.FC = () => {
             .attr("class", "bubble-core")
             .attr("r", (d) => d.radius ?? 0)
             .attr("fill", "rgba(0, 0, 0, 0.35)")
-            .attr("stroke", (d) => (getChangeForTimeframe(d, timeframe) > 0 ? "#22c55e" : "#ef4444"))
-            .attr("stroke-width", 3)
-            .style("filter", (d) => (getChangeForTimeframe(d, timeframe) > 0 ? "url(#neon-green-glow)" : "url(#neon-red-glow)"));
+            .attr("stroke", (d) => getMarketColor(getChangeForTimeframe(d, timeframe)))
+            .attr("stroke-width", (d) => {
+                const change = getChangeForTimeframe(d, timeframe);
+                return change === 0 ? 3 : 3;
+            })
+            .style("filter", (d) => {
+                const change = getChangeForTimeframe(d, timeframe);
+                return change > 0 ? "url(#neon-green-glow)" : change < 0 ? "url(#neon-red-glow)" : "none";
+            });
 
         bubbleGroups
             .append("circle")
             .attr("class", "bubble-rim")
             .attr("r", (d) => (d.radius ?? 0) + 4)
             .attr("fill", "none")
-            .attr("stroke", (d) => (getChangeForTimeframe(d, timeframe) > 0 ? "rgba(34,197,94,0.6)" : "rgba(239,68,68,0.6)"))
-            .attr("stroke-width", 3)
-            .style("opacity", 0.9);
-        
+            .attr("stroke", (d) => {
+                const change = getChangeForTimeframe(d, timeframe);
+                const baseColor = getMarketColor(change);
+                return `${baseColor}${change === 0 ? '80' : '99'}`; // Add transparency for neutral
+            })
+            .attr("stroke-width", (d) => {
+                const change = getChangeForTimeframe(d, timeframe);
+                return change === 0 ? 2 : 3;
+            })
+            .style("opacity", (d) => {
+                const change = getChangeForTimeframe(d, timeframe);
+                return change === 0 ? 0.6 : 0.9;
+            });
+
         bubbleGroups.each(function (d) {
             const group = d3.select<SVGGElement, CryptoCoin>(this);
             const r = d.radius ?? 0;
@@ -645,7 +681,7 @@ const CryptoBubblesUI: React.FC = () => {
             .style("font-family", "Inter, -apple-system, BlinkMacSystemFont, sans-serif")
             .style("font-weight", "800")
             .style("font-size", (d) => `${Math.min((d.radius ?? 0) * 0.20, 16)}px`)
-            .style("fill", (d) => (getChangeForTimeframe(d, timeframe) > 0 ? "#22c55e" : "#ef4444"))
+            .style("fill", (d) => getMarketColor(getChangeForTimeframe(d, timeframe)))
             .style("pointer-events", "none")
             .text((d) => {
                 const change = getChangeForTimeframe(d, timeframe);
@@ -684,27 +720,62 @@ const CryptoBubblesUI: React.FC = () => {
             .on("mouseenter", function (_event, d) {
                 const group = d3.select(this);
                 const radius = d.radius ?? 0;
-                const filterId = getChangeForTimeframe(d, timeframe) > 0 ? "url(#neon-green-glow)" : "url(#neon-red-glow)";
-                group.select(".bubble-core").transition().duration(200).attr("stroke-width", 4).style("filter", filterId);
-                group.select(".bubble-rim").transition().duration(200).style("opacity", 1).attr("r", radius + 8).attr("stroke-width", 4);
-                group.selectAll("text").transition().duration(200).style("filter", "drop-shadow(0 0 8px currentColor)");
+                const change = getChangeForTimeframe(d, timeframe);
+                const filterId = change > 0 ? "url(#neon-green-glow)" : change < 0 ? "url(#neon-red-glow)" : "none";
+                group.select(".bubble-core")
+                    .transition().duration(200)
+                    .attr("stroke-width", change === 0 ? 3 : 4)
+                    .style("filter", filterId);
+                group.select(".bubble-rim")
+                    .transition().duration(200)
+                    .style("opacity", change === 0 ? 0.7 : 1)
+                    .attr("r", radius + 8)
+                    .attr("stroke-width", change === 0 ? 2 : 4);
+                group.selectAll("text")
+                    .transition().duration(200)
+                    .style("filter", change === 0 ? "none" : "drop-shadow(0 0 8px currentColor)");
             })
             .on("mouseleave", function (_event, d) {
                 const group = d3.select(this);
                 const radius = d.radius ?? 0;
-                const filterIdLeave = getChangeForTimeframe(d, timeframe) > 0 ? "url(#neon-green-glow)" : "url(#neon-red-glow)";
-                group.select(".bubble-core").transition().duration(300).attr("stroke-width", 3).style("filter", filterIdLeave);
-                group.select(".bubble-rim").transition().duration(300).style("opacity", 0.9).attr("r", radius + 4).attr("stroke-width", 3);
-                group.selectAll("text").transition().duration(300).style("filter", "none");
+                const change = getChangeForTimeframe(d, timeframe);
+                const filterIdLeave = change > 0 ? "url(#neon-green-glow)" : change < 0 ? "url(#neon-red-glow)" : "none";
+                group.select(".bubble-core")
+                    .transition().duration(300)
+                    .attr("stroke-width", change === 0 ? 3 : 3)
+                    .style("filter", filterIdLeave);
+                group.select(".bubble-rim")
+                    .transition().duration(300)
+                    .style("opacity", change === 0 ? 0.6 : 0.9)
+                    .attr("r", radius + 4)
+                    .attr("stroke-width", change === 0 ? 2 : 3);
+                group.selectAll("text")
+                    .transition().duration(300)
+                    .style("filter", "none");
             })
             .on("click", function (_event, d) {
                 setSelectedBubble(d);
                 const group = d3.select(this);
                 const radius = d.radius ?? 0;
-                const strokeColor = getChangeForTimeframe(d, timeframe) > 0 ? "#22c55e" : "#ef4444";
-                const clickRipple = group.append("circle").attr("r", 0).attr("fill", "none").attr("stroke", strokeColor).attr("stroke-width", 4).style("opacity", 1);
-                clickRipple.transition().duration(800).ease(d3.easeCircleOut).attr("r", radius + 40).style("opacity", 0).style("stroke-width", 1).remove();
-                group.select(".bubble-core").transition().duration(150).attr("stroke-width", 5).transition().duration(150).attr("stroke-width", 3);
+                const change = getChangeForTimeframe(d, timeframe);
+                const strokeColor = getMarketColor(change);
+                const clickRipple = group.append("circle")
+                    .attr("r", 0)
+                    .attr("fill", "none")
+                    .attr("stroke", strokeColor)
+                    .attr("stroke-width", change === 0 ? 2 : 4)
+                    .style("opacity", 1);
+                clickRipple
+                    .transition().duration(800).ease(d3.easeCircleOut)
+                    .attr("r", radius + 40)
+                    .style("opacity", 0)
+                    .style("stroke-width", change === 0 ? 1 : 1)
+                    .remove();
+                group.select(".bubble-core")
+                    .transition().duration(150)
+                    .attr("stroke-width", change === 0 ? 4 : 5)
+                    .transition().duration(150)
+                    .attr("stroke-width", change === 0 ? 3 : 3);
             });
 
         simulation.on("tick", () => {
@@ -912,7 +983,7 @@ const CryptoBubblesUI: React.FC = () => {
                                                 selectedBubble.category === 'minor' ? 'bg-blue-700/20 text-blue-300 border-blue-700/40' :
                                                     selectedBubble.category === 'forex-pair' ? 'bg-yellow-700/20 text-yellow-300 border-yellow-700/40' :
                                                         'bg-purple-700/20 text-purple-300 border-purple-700/40'
-                                            }`}>{selectedBubble.category.toUpperCase()}</span>
+                                        }`}>{selectedBubble.category.toUpperCase()}</span>
                                     )}
                                 </div>
                                 <div className="text-gray-400 text-sm font-mono">{selectedBubble.symbol}</div>
@@ -943,13 +1014,23 @@ const CryptoBubblesUI: React.FC = () => {
                             </div>
                             <div className="flex items-center gap-2 justify-between py-2 border-t border-gray-700/40">
                                 <span className="text-gray-400 text-sm">Change ({timeframe.toUpperCase()}):</span>
-                                <span className={`font-bold text-lg flex items-center gap-2 ${selectedBubbleChange >= 0 ? "text-green-400" : "text-red-400"}`}>
-                                    {selectedBubbleChange >= 0 ? (
-                                        <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M4 12L8.5 7.5L12 11L16 6" stroke="#22c55e" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /><circle cx="16" cy="6" r="2" fill="#22c55e" /></svg>
+                                <span className={`font-bold text-lg flex items-center gap-2 ${selectedBubbleChange > 0 ? "text-emerald-400" : selectedBubbleChange < 0 ? "text-red-400" : "text-gray-400"}`}>
+                                    {selectedBubbleChange > 0 ? (
+                                        <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                                            <path d="M4 12L8.5 7.5L12 11L16 6" stroke="#10b981" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                                            <circle cx="16" cy="6" r="2" fill="#10b981" />
+                                        </svg>
+                                    ) : selectedBubbleChange < 0 ? (
+                                        <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                                            <path d="M4 8L8.5 12.5L12 9L16 14" stroke="#f87171" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                                            <circle cx="16" cy="14" r="2" fill="#f87171" />
+                                        </svg>
                                     ) : (
-                                        <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M4 8L8.5 12.5L12 9L16 14" stroke="#ef4444" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /><circle cx="16" cy="14" r="2" fill="#ef4444" /></svg>
+                                        <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                                            <line x1="4" y1="10" x2="16" y2="10" stroke="#9ca3af" strokeWidth="2" strokeLinecap="round" />
+                                        </svg>
                                     )}
-                                    {selectedBubbleChange >= 0 ? '+' : ''}{selectedBubbleChange.toFixed(2)}%
+                                    {selectedBubbleChange > 0 ? '+' : ''}{selectedBubbleChange.toFixed(2)}%
                                 </span>
                             </div>
                         </>
