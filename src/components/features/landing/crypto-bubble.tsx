@@ -893,6 +893,21 @@ const CryptoBubblesUI: React.FC = () => {
                             )}
                             <div>
                                 <div className="flex items-center gap-2">
+                                    {selectedBubble.category && (
+                                        selectedBubble.category === 'forex-pair' ?
+                                            <>
+                                                <img
+                                                    src={`https://flagcdn.com/w40/${selectedBubble.baseCountryCode.toLowerCase()}.png`}
+                                                    alt={selectedBubble.baseCountryCode}
+                                                    className={'w-12'}
+                                                />
+                                                <img
+                                                    src={`https://flagcdn.com/w40/${selectedBubble.quoteCountryCode.toLowerCase()}.png`}
+                                                    alt={selectedBubble.quoteCountryCode}
+                                                    className={'w-12'}
+                                                />
+                                            </> : <></>
+                                    )}
                                     <span className="text-white text-xl font-bold">{selectedBubble.name}</span>
                                     {selectedBubble.category && (
                                         <span className={`px-2 py-1 rounded-full text-xs font-semibold border ${selectedBubble.category === 'crypto' ? 'bg-blue-700/20 text-blue-300 border-blue-700/40' :
@@ -967,10 +982,6 @@ const CryptoBubblesUI: React.FC = () => {
                             </div>
                         </div>
                     )}
-                    <div className="flex items-center justify-between text-xs text-gray-400 bg-gray-900/60 rounded-lg px-3 py-2 mt-2">
-                        <span>Last Updated:</span>
-                        <span className="font-mono text-blue-400">{getCurrentTimeUTC()}</span>
-                    </div>
                 </div>
             )}
         </div>
