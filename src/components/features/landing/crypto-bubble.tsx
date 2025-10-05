@@ -343,6 +343,27 @@ const fetchRealForexPairsData = async (): Promise<CryptoCoin[]> => {
     }
 };
 
+const fetchHistoricalData = async (coinId: string): Promise<{ time: number; price: number }[] | null> => {
+    try {
+        const response = await fetch(
+            `https://api.coingecko.com/api/v3/coins/${coinId}/market_chart?vs_currency=usd&days=30&interval=daily`
+        );
+        if (!response.ok) {
+            console.error(`Historical data API error: ${response.status} ${response.statusText}`);
+            return null;
+        }
+        const data = await response.json();
+        if (!data || !data.prices) {
+            console.error('Invalid historical data format received');
+            return null;
+        }
+        return data.prices.map((p: [number, number]) => ({ time: p[0], price: p[1] }));
+    } catch (err) {
+        console.error("Error fetching historical data ", err);
+        return null;
+    }
+};
+
 // Helper function for market action strength colors
 const getMarketColor = (change: number): string => {
     const absChange = Math.abs(change);
@@ -363,6 +384,89 @@ const getMarketColor = (change: number): string => {
     }
 };
 
+const HistoricalChart: React.FC<{ data: { time: number; price: number }[] }> = ({ data }) => {
+    const chartRef = useRef<SVGSVGElement | null>(null);
+
+    useEffect(() => {
+        if (!chartRef.current || !data || data.length === 0) return;
+
+        const svg = d3.select(chartRef.current);
+        svg.selectAll("*").remove();
+
+        const width = 320;
+        const height = 120;
+        const margin = { top: 10, right: 15, bottom: 25, left: 45 };
+
+        const x = d3.scaleTime()
+            .domain(d3.extent(data, d => new Date(d.time)) as [Date, Date])
+            .range([margin.left, width - margin.right]);
+
+        const y = d3.scaleLinear()
+            .domain(d3.extent(data, d => d.price) as [number, number])
+            .range([height - margin.bottom, margin.top]);
+
+        const line = d3.line<{ time: number; price: number }>()
+            .x(d => x(new Date(d.time)))
+            .y(d => y(d.price))
+            .curve(d3.curveMonotoneX);
+
+        const area = d3.area<{ time: number; price: number }>()
+            .x(d => x(new Date(d.time)))
+            .y0(height - margin.bottom)
+            .y1(d => y(d.price))
+            .curve(d3.curveMonotoneX);
+
+        const defs = svg.append("defs");
+        const gradient = defs.append("linearGradient")
+            .attr("id", "price-gradient")
+            .attr("gradientUnits", "userSpaceOnUse")
+            .attr("x1", 0).attr("y1", y(d3.min(data, d => d.price) as number))
+            .attr("x2", 0).attr("y2", y(d3.max(data, d => d.price) as number));
+
+        gradient.append("stop").attr("offset", "0%").attr("stop-color", "#38bdf8").attr("stop-opacity", 0.4);
+        gradient.append("stop").attr("offset", "100%").attr("stop-color", "#38bdf8").attr("stop-opacity", 0);
+
+        svg.append("path")
+            .datum(data)
+            .attr("fill", "url(#price-gradient)")
+            .attr("d", area);
+
+        svg.append("path")
+            .datum(data)
+            .attr("fill", "none")
+            .attr("stroke", "#38bdf8")
+            .attr("stroke-width", 2)
+            .attr("d", line);
+
+        const xAxis = (g: d3.Selection<SVGGElement, unknown, null, undefined>) => {
+            g.attr("transform", `translate(0,${height - margin.bottom})`)
+             .call(d3.axisBottom(x).ticks(5).tickFormat(d3.timeFormat("%b %d") as any).tickSize(0).tickPadding(10));
+            g.select(".domain").remove();
+            g.selectAll("line").remove();
+            g.selectAll("text").style("fill", "#9ca3af").style("font-size", "10px");
+        };
+
+        const yAxis = (g: d3.Selection<SVGGElement, unknown, null, undefined>) => {
+            g.attr("transform", `translate(${margin.left},0)`)
+             .call(d3.axisLeft(y).ticks(4).tickFormat(d => `$${Number(d).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`).tickSize(0).tickPadding(10));
+            g.select(".domain").remove();
+            g.selectAll("line").remove();
+            g.selectAll("text").style("fill", "#9ca3af").style("font-size", "10px");
+        };
+
+        svg.append("g").call(xAxis);
+        svg.append("g").call(yAxis);
+
+    }, [data]);
+
+    return (
+        <div className="mt-4">
+            <h3 className="text-sm font-bold text-gray-300 mb-2">Price (Last 30 Days)</h3>
+            <svg ref={chartRef} viewBox={`0 0 320 120`}></svg>
+        </div>
+    );
+};
+
 const CryptoBubblesUI: React.FC = () => {
     const svgRef = useRef<SVGSVGElement | null>(null);
     const simulationRef = useRef<d3.Simulation<CryptoCoin, undefined> | null>(null);
@@ -373,6 +477,8 @@ const CryptoBubblesUI: React.FC = () => {
         height: 800,
     });
     const [selectedBubble, setSelectedBubble] = useState<CryptoCoin | null>(null);
+    const [historicalData, setHistoricalData] = useState<{ time: number; price: number }[] | null>(null);
+    const [isChartLoading, setIsChartLoading] = useState<boolean>(false);
     const [marketData, setMarketData] = useState<CryptoCoin[]>([]);
     const [loading, setLoading] = useState<boolean>(true);
     const [error, setError] = useState<string | null>(null);
@@ -793,6 +899,21 @@ const CryptoBubblesUI: React.FC = () => {
         };
     }, [marketData, dimensions, loading, error, selectedCategory, timeframe, sizeBy]);
 
+    useEffect(() => {
+        if (selectedBubble && selectedBubble.category === 'crypto') {
+            const getHistoricalData = async () => {
+                setIsChartLoading(true);
+                setHistoricalData(null);
+                const data = await fetchHistoricalData(selectedBubble.id);
+                setHistoricalData(data);
+                setIsChartLoading(false);
+            };
+            void getHistoricalData();
+        } else {
+            setHistoricalData(null);
+        }
+    }, [selectedBubble]);
+
     function autoMoveForce(strength = 0.05) {
         let nodes: CryptoCoin[];
         function force(alpha: number) {
@@ -1033,6 +1154,14 @@ const CryptoBubblesUI: React.FC = () => {
                                     {selectedBubbleChange > 0 ? '+' : ''}{selectedBubbleChange.toFixed(2)}%
                                 </span>
                             </div>
+                            {isChartLoading && (
+                                <div className="flex justify-center items-center h-32">
+                                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-400"></div>
+                                </div>
+                            )}
+                            {!isChartLoading && historicalData && (
+                                <HistoricalChart data={historicalData} />
+                            )}
                         </>
                     ) : (
                         <div className="flex flex-col gap-2 py-2">
