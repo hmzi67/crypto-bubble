@@ -364,23 +364,43 @@ const fetchHistoricalData = async (coinId: string): Promise<{ time: number; pric
     }
 };
 
-// Helper function for market action strength colors
+// Helper function for market action strength colors using red/green shades
 const getMarketColor = (change: number): string => {
     const absChange = Math.abs(change);
 
-    // Define color intensity thresholds
-    if (absChange < 0.5) {
-        // Sideways/low movement - neutral gray
-        return "#9ca3af"; // gray-400
-    } else if (absChange >= 5) {
-        // Strong movement - bright colors
-        return change >= 0 ? "#10b981" : "#f87171"; // emerald-500 / red-400
-    } else if (absChange >= 2) {
-        // Moderate movement - medium colors
-        return change >= 0 ? "#34d399" : "#fca5a5"; // emerald-400 / red-300
+    if (change > 0) {
+        // Positive change - green shades indicate buying pressure strength
+        if (absChange >= 5) {
+            // Strong buying - bright green (≥5% change)
+            return "#22c55e"; // green-500
+        } else if (absChange >= 2) {
+            // Moderate buying - medium green (2-5% change)
+            return "#4ade80"; // green-400
+        } else if (absChange >= 0.5) {
+            // Weak buying - muted green (0.5-2% change)
+            return "#86efac"; // green-300
+        } else {
+            // Very weak buying - light green (<0.5% change)
+            return "#bbf7d0"; // green-200
+        }
+    } else if (change < 0) {
+        // Negative change - red shades indicate selling pressure strength
+        if (absChange >= 5) {
+            // Strong selling - bright red (≥5% change)
+            return "#ef4444"; // red-500
+        } else if (absChange >= 2) {
+            // Moderate selling - medium red (2-5% change)
+            return "#f87171"; // red-400
+        } else if (absChange >= 0.5) {
+            // Weak selling - muted red (0.5-2% change)
+            return "#fca5a5"; // red-300
+        } else {
+            // Very weak selling - light red (<0.5% change)
+            return "#fecaca"; // red-200
+        }
     } else {
-        // Weak movement - muted colors
-        return change >= 0 ? "#6ee7b7" : "#fecaca"; // emerald-300 / red-200
+        // No change - neutral gray
+        return "#9ca3af"; // gray-400
     }
 };
 
@@ -439,8 +459,12 @@ const HistoricalChart: React.FC<{ data: { time: number; price: number }[] }> = (
             .attr("d", line);
 
         const xAxis = (g: d3.Selection<SVGGElement, unknown, null, undefined>) => {
+            const fmt = d3.timeFormat("%b %d");
             g.attr("transform", `translate(0,${height - margin.bottom})`)
-             .call(d3.axisBottom(x).ticks(5).tickFormat(d3.timeFormat("%b %d") as any).tickSize(0).tickPadding(10));
+                .call(d3.axisBottom(x).ticks(5).tickFormat((dv: Date | d3.NumberValue, _i: number) => {
+                    const date = dv instanceof Date ? dv : new Date(+dv as number);
+                    return fmt(date);
+                }).tickSize(0).tickPadding(10));
             g.select(".domain").remove();
             g.selectAll("line").remove();
             g.selectAll("text").style("fill", "#9ca3af").style("font-size", "10px");
@@ -448,7 +472,7 @@ const HistoricalChart: React.FC<{ data: { time: number; price: number }[] }> = (
 
         const yAxis = (g: d3.Selection<SVGGElement, unknown, null, undefined>) => {
             g.attr("transform", `translate(${margin.left},0)`)
-             .call(d3.axisLeft(y).ticks(4).tickFormat(d => `$${Number(d).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`).tickSize(0).tickPadding(10));
+                .call(d3.axisLeft(y).ticks(4).tickFormat(d => `$${Number(d).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`).tickSize(0).tickPadding(10));
             g.select(".domain").remove();
             g.selectAll("line").remove();
             g.selectAll("text").style("fill", "#9ca3af").style("font-size", "10px");
@@ -498,53 +522,53 @@ const HistoricalChart: React.FC<{ data: { time: number; price: number }[] }> = (
             .style("pointer-events", "all");
 
         overlay.on("mouseover", () => tooltipGroup.style("display", null))
-               .on("mouseout", () => tooltipGroup.style("display", "none"))
-               .on("mousemove", (event) => {
-                    const bisectDate = d3.bisector((d: { time: number; price: number }) => new Date(d.time)).left;
-                    const x0 = x.invert(d3.pointer(event)[0]);
-                    const i = bisectDate(data, x0, 1);
-                    const d0 = data[i - 1];
-                    const d1 = data[i];
-                    const d = (d1 && (x0.getTime() - new Date(d0.time).getTime() > new Date(d1.time).getTime() - x0.getTime())) ? d1 : d0;
+            .on("mouseout", () => tooltipGroup.style("display", "none"))
+            .on("mousemove", (event) => {
+                const bisectDate = d3.bisector((d: { time: number; price: number }) => new Date(d.time)).left;
+                const x0 = x.invert(d3.pointer(event)[0]);
+                const i = bisectDate(data, x0, 1);
+                const d0 = data[i - 1];
+                const d1 = data[i];
+                const d = (d1 && (x0.getTime() - new Date(d0.time).getTime() > new Date(d1.time).getTime() - x0.getTime())) ? d1 : d0;
 
-                    const posX = x(new Date(d.time));
-                    const posY = y(d.price);
+                const posX = x(new Date(d.time));
+                const posY = y(d.price);
 
-                    tooltipLine.attr("x1", posX).attr("x2", posX);
-                    tooltipCircle.attr("cx", posX).attr("cy", posY);
+                tooltipLine.attr("x1", posX).attr("x2", posX);
+                tooltipCircle.attr("cx", posX).attr("cy", posY);
 
-                    tooltipTextPrice.text(`$${d.price.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`);
-                    tooltipTextDate.text(d3.timeFormat("%b %d, %Y")(new Date(d.time)));
+                tooltipTextPrice.text(`$${d.price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`);
+                tooltipTextDate.text(d3.timeFormat("%b %d, %Y")(new Date(d.time)));
 
-                    const priceNode = tooltipTextPrice.node();
-                    const dateNode = tooltipTextDate.node();
+                const priceNode = tooltipTextPrice.node();
+                const dateNode = tooltipTextDate.node();
 
-                    if (priceNode && dateNode) {
-                        const priceBBox = priceNode.getBBox();
-                        const dateBBox = dateNode.getBBox();
-                        const textWidth = Math.max(priceBBox.width, dateBBox.width);
-                        const textHeight = priceBBox.height + dateBBox.height;
+                if (priceNode && dateNode) {
+                    const priceBBox = priceNode.getBBox();
+                    const dateBBox = dateNode.getBBox();
+                    const textWidth = Math.max(priceBBox.width, dateBBox.width);
+                    const textHeight = priceBBox.height + dateBBox.height;
 
-                        tooltipTextBg
-                            .attr("width", textWidth + 16)
-                            .attr("height", textHeight + 12);
+                    tooltipTextBg
+                        .attr("width", textWidth + 16)
+                        .attr("height", textHeight + 12);
 
-                        let textX = posX + 15;
-                        if (textX + textWidth + 16 > width) {
-                            textX = posX - textWidth - 31;
-                        }
-
-                        let textY = posY - (textHeight / 2);
-                        if (textY < margin.top) textY = margin.top;
-                        if (textY + textHeight + 12 > height - margin.bottom) textY = height - margin.bottom - textHeight - 12;
-
-
-                        tooltipTextGroup.attr("transform", `translate(${textX}, ${textY})`);
-                        tooltipTextBg.attr("x", 0).attr("y", 0);
-                        tooltipTextPrice.attr("x", 8).attr("y", 14);
-                        tooltipTextDate.attr("x", 8).attr("y", 28);
+                    let textX = posX + 15;
+                    if (textX + textWidth + 16 > width) {
+                        textX = posX - textWidth - 31;
                     }
-               });
+
+                    let textY = posY - (textHeight / 2);
+                    if (textY < margin.top) textY = margin.top;
+                    if (textY + textHeight + 12 > height - margin.bottom) textY = height - margin.bottom - textHeight - 12;
+
+
+                    tooltipTextGroup.attr("transform", `translate(${textX}, ${textY})`);
+                    tooltipTextBg.attr("x", 0).attr("y", 0);
+                    tooltipTextPrice.attr("x", 8).attr("y", 14);
+                    tooltipTextDate.attr("x", 8).attr("y", 28);
+                }
+            });
 
     }, [data]);
 
@@ -1193,7 +1217,7 @@ const CryptoBubblesUI: React.FC = () => {
                                                 selectedBubble.category === 'minor' ? 'bg-blue-700/20 text-blue-300 border-blue-700/40' :
                                                     selectedBubble.category === 'forex-pair' ? 'bg-yellow-700/20 text-yellow-300 border-yellow-700/40' :
                                                         'bg-purple-700/20 text-purple-300 border-purple-700/40'
-                                        }`}>{selectedBubble.category.toUpperCase()}</span>
+                                            }`}>{selectedBubble.category.toUpperCase()}</span>
                                     )}
                                 </div>
                                 <div className="text-gray-400 text-sm font-mono">{selectedBubble.symbol}</div>
