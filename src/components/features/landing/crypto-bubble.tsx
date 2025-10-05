@@ -1,6 +1,7 @@
 "use client"
 import React, { useEffect, useRef, useState } from "react";
 import * as d3 from "d3";
+import Image from "next/image";
 import Header from "@/components/layout/header";
 
 type CryptoCoin = {
@@ -770,12 +771,7 @@ const CryptoBubblesUI: React.FC = () => {
     const selectedBubbleChange = selectedBubble ? getChangeForTimeframe(selectedBubble, timeframe) : 0;
 
     return (
-        <div className="fixed inset-0 w-screen h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 animated-bg z-50">
-            <style jsx>{`
-                @keyframes pulse { 0% { opacity: 0.1; transform: scale(1); filter: hue-rotate(0deg); } 100% { opacity: 0.2; transform: scale(1.05); filter: hue-rotate(10deg); } }
-                .animated-bg { background-size: 200% 200%; animation: gradientShift 15s ease infinite; }
-                @keyframes gradientShift { 0% { background-position: 0 50%; } 50% { background-position: 100% 50%; } 100% { background-position: 0 50%; } }
-            `}</style>
+        <div className="fixed inset-0 w-screen h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 z-50">
             <Header
                 title="CRYPTO BUBBLES"
                 subtitle="Live Market Visualization"
@@ -889,24 +885,25 @@ const CryptoBubblesUI: React.FC = () => {
                     <div className="flex items-center justify-between mb-2">
                         <div className="flex items-center gap-3">
                             {selectedBubble.logoUrl && (
-                                <img src={selectedBubble.logoUrl} alt={selectedBubble.symbol} className="w-10 h-10 rounded-full border border-gray-700/60 bg-gray-900/60" />
+                                <Image src={selectedBubble.logoUrl} alt={selectedBubble.symbol} width={40} height={40} className="rounded-full border border-gray-700/60 bg-gray-900/60" />
                             )}
                             <div>
                                 <div className="flex items-center gap-2">
-                                    {selectedBubble.category && (
-                                        selectedBubble.category === 'forex-pair' ?
-                                            <>
-                                                <img
-                                                    src={`https://flagcdn.com/w40/${selectedBubble.baseCountryCode.toLowerCase()}.png`}
-                                                    alt={selectedBubble.baseCountryCode}
-                                                    className={'w-12'}
-                                                />
-                                                <img
-                                                    src={`https://flagcdn.com/w40/${selectedBubble.quoteCountryCode.toLowerCase()}.png`}
-                                                    alt={selectedBubble.quoteCountryCode}
-                                                    className={'w-12'}
-                                                />
-                                            </> : <></>
+                                    {selectedBubble.category === 'forex-pair' && selectedBubble.baseCountryCode && selectedBubble.quoteCountryCode && (
+                                        <>
+                                            <Image
+                                                src={`https://flagcdn.com/w40/${selectedBubble.baseCountryCode.toLowerCase()}.png`}
+                                                alt={selectedBubble.baseCountryCode}
+                                                width={48}
+                                                height={36}
+                                            />
+                                            <Image
+                                                src={`https://flagcdn.com/w40/${selectedBubble.quoteCountryCode.toLowerCase()}.png`}
+                                                alt={selectedBubble.quoteCountryCode}
+                                                width={48}
+                                                height={36}
+                                            />
+                                        </>
                                     )}
                                     <span className="text-white text-xl font-bold">{selectedBubble.name}</span>
                                     {selectedBubble.category && (
