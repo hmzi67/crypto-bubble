@@ -195,7 +195,7 @@ const fetchRealCryptoData = async (page: number = 1): Promise<CryptoCoin[]> => {
             volume24h: coin.total_volume,
             rank: coin.market_cap_rank,
             category: "crypto",
-            color: (coin.price_change_percentage_24h ?? 0) > 0 ? "#22c55e" : "#ef4444",
+            color: getMarketColor(coin.price_change_percentage_24h ?? 0),
             logoUrl: coin.image
         }));
     } catch (err) {
@@ -242,7 +242,7 @@ const fetchRealForexData = async (): Promise<CryptoCoin[]> => {
                 currentRate: rate,
                 countryCode: currency.country,
                 category: currency.importance >= 70 ? "major" : currency.importance >= 40 ? "minor" : "exotic",
-                color: change > 0 ? "#22c55e" : "#ef4444"
+                color: getMarketColor(change)
             };
         }).filter((item): item is CryptoCoin => item !== null);
     } catch (err) {
@@ -328,7 +328,7 @@ const fetchRealForexPairsData = async (): Promise<CryptoCoin[]> => {
                     ask: pairRate + spread / 2,
                     spread: spread,
                     category: "forex-pair",
-                    color: change > 0 ? "#22c55e" : "#ef4444",
+                    color: getMarketColor(change),
                     baseCountryCode: currencyDetails[pair.base]?.country,
                     quoteCountryCode: currencyDetails[pair.quote]?.country,
                 });
@@ -348,18 +348,18 @@ const getMarketColor = (change: number): string => {
     const absChange = Math.abs(change);
 
     // Define color intensity thresholds
-    if (absChange >= 5) {
+    if (absChange < 0.5) {
+        // Sideways/low movement - neutral gray
+        return "#9ca3af"; // gray-400
+    } else if (absChange >= 5) {
         // Strong movement - bright colors
         return change >= 0 ? "#10b981" : "#f87171"; // emerald-500 / red-400
     } else if (absChange >= 2) {
         // Moderate movement - medium colors
         return change >= 0 ? "#34d399" : "#fca5a5"; // emerald-400 / red-300
-    } else if (absChange > 0) {
+    } else {
         // Weak movement - muted colors
         return change >= 0 ? "#6ee7b7" : "#fecaca"; // emerald-300 / red-200
-    } else {
-        // No movement - neutral gray
-        return "#9ca3af"; // gray-400
     }
 };
 
