@@ -417,7 +417,7 @@ const HistoricalChart: React.FC<{ data: { time: number; price: number }[] }> = (
             .attr("d", line);
         const xAxis = (g: d3.Selection<SVGGElement, unknown, null, undefined>) => {
             g.attr("transform", `translate(0,${height - margin.bottom})`)
-                .call(d3.axisBottom(x).ticks(5).tickFormat(d3.timeFormat("%b %d") as any).tickSize(0).tickPadding(10));
+                .call(d3.axisBottom(x).ticks(5).tickFormat(d3.timeFormat("%b %d") as never).tickSize(0).tickPadding(10));
             g.select(".domain").remove();
             g.selectAll("line").remove();
             g.selectAll("text").style("fill", "#9ca3af").style("font-size", "10px");
