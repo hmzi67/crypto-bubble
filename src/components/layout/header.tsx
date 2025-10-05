@@ -19,6 +19,12 @@ type HeaderProps = {
         label: string;
         icon: React.ReactNode;
     }>;
+    timeframe?: string;
+    marketCapGroup?: number;
+    sizeBy?: 'marketCap' | 'volume24h';
+    onTimeframeChange?: (value: string) => void;
+    onMarketCapGroupChange?: (value: number) => void;
+    onSizeByChange?: (value: 'marketCap' | 'volume24h') => void;
 };
 
 const Header: React.FC<HeaderProps> = ({
@@ -30,8 +36,15 @@ const Header: React.FC<HeaderProps> = ({
     selectedCategory = "crypto",
     showCategories = true,
     showSearch = true,
+    showControls = true,
     placeholder,
-    categories
+    categories,
+    timeframe,
+    marketCapGroup,
+    sizeBy,
+    onTimeframeChange,
+    onMarketCapGroupChange,
+    onSizeByChange,
 }) => {
     const [time, setTime] = useState(new Date().toLocaleTimeString());
 
@@ -120,39 +133,85 @@ const Header: React.FC<HeaderProps> = ({
                 </div>
             </div>
 
-            {/* Category-specific Information Bar */}
-            <div className="px-6 pb-4">
-                <div className="flex items-center justify-between bg-gray-800/30 backdrop-blur-sm rounded-xl p-4 border border-gray-700/30">
-                    <div className="flex items-center gap-6">
-                        <div className="text-sm">
-                            <span className="text-gray-400">Market Status:</span>
-                            <span className="text-green-400 font-semibold ml-2 flex items-center gap-1">
-                                <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
-                                Live
-                            </span>
-                        </div>
-                        {selectedCategory === 'crypto' && (
+            {/* Sub-bar for info and controls */}
+            {showControls && (
+                <div className="px-6 pb-4">
+                    <div className="flex items-center justify-between bg-gray-800/30 backdrop-blur-sm rounded-xl p-4 border border-gray-700/30">
+                        <div className="flex items-center gap-6">
                             <div className="text-sm">
-                                <span className="text-gray-400">Total Market Cap:</span>
-                                <span className="text-blue-400 font-semibold ml-2">$2.1T</span>
+                                <span className="text-gray-400">Market Status:</span>
+                                <span className="text-green-400 font-semibold ml-2 flex items-center gap-1">
+                                    <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
+                                    Live
+                                </span>
                             </div>
-                        )}
-                        {selectedCategory === 'forex' && (
-                            <div className="text-sm">
-                                <span className="text-gray-400">Major Pairs:</span>
-                                <span className="text-blue-400 font-semibold ml-2">Active</span>
-                            </div>
-                        )}
-                    </div>
+                            {selectedCategory === 'crypto' && (
+                                <div className="flex items-center gap-x-6 gap-y-4 text-sm text-gray-300">
+                                    <div className="flex items-center gap-3">
+                                        <label htmlFor="timeframe-select" className="font-semibold text-gray-400">Timeframe:</label>
+                                        <select
+                                            id="timeframe-select"
+                                            value={timeframe}
+                                            onChange={(e) => onTimeframeChange?.(e.target.value)}
+                                            className="bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all appearance-none"
+                                            style={{ backgroundImage: `url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e")`, backgroundPosition: 'right 0.5rem center', backgroundRepeat: 'no-repeat', backgroundSize: '1.5em 1.5em' }}
+                                        >
+                                            <option value="1h">1 Hour</option>
+                                            <option value="24h">24 Hours</option>
+                                            <option value="7d">7 Days</option>
+                                            <option value="30d">30 Days</option>
+                                        </select>
+                                    </div>
 
-                    <div className="flex items-center gap-2">
-                        <span className="text-gray-400">Updated Time:</span>
-                        <span className="text-white font-semibold ml-2">
+                                    <div className="flex items-center gap-3">
+                                        <label htmlFor="marketcap-select" className="font-semibold text-gray-400">Market Cap:</label>
+                                        <select
+                                            id="marketcap-select"
+                                            value={marketCapGroup}
+                                            onChange={(e) => onMarketCapGroupChange?.(Number(e.target.value))}
+                                            className="bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all appearance-none"
+                                            style={{ backgroundImage: `url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e")`, backgroundPosition: 'right 0.5rem center', backgroundRepeat: 'no-repeat', backgroundSize: '1.5em 1.5em' }}
+                                        >
+                                            {[1, 2, 3, 4, 5].map(page => (
+                                                <option key={page} value={page}>
+                                                    Top #{(page - 1) * 100 + 1} - #{page * 100}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    </div>
+
+                                    <div className="flex items-center gap-3">
+                                        <label htmlFor="sizeby-select" className="font-semibold text-gray-400">Size by:</label>
+                                        <select
+                                            id="sizeby-select"
+                                            value={sizeBy}
+                                            onChange={(e) => onSizeByChange?.(e.target.value as 'marketCap' | 'volume24h')}
+                                            className="bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all appearance-none"
+                                            style={{ backgroundImage: `url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e")`, backgroundPosition: 'right 0.5rem center', backgroundRepeat: 'no-repeat', backgroundSize: '1.5em 1.5em' }}
+                                        >
+                                            <option value="marketCap">Market Cap</option>
+                                            <option value="volume24h">Volume (24h)</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            )}
+                            {selectedCategory === 'forex' && (
+                                <div className="text-sm">
+                                    <span className="text-gray-400">Major Pairs:</span>
+                                    <span className="text-blue-400 font-semibold ml-2">Active</span>
+                                </div>
+                            )}
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                            <span className="text-gray-400">Updated Time:</span>
+                            <span className="text-white font-semibold ml-2">
                                 {time}
                             </span>
+                        </div>
                     </div>
                 </div>
-            </div>
+            )}
         </div>
     );
 };

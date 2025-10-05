@@ -786,37 +786,14 @@ const CryptoBubblesUI: React.FC = () => {
                 showCategories={true}
                 showSearch={true}
                 showControls={true}
+                timeframe={timeframe}
+                marketCapGroup={marketCapGroup}
+                sizeBy={sizeBy}
+                onTimeframeChange={setTimeframe}
+                onMarketCapGroupChange={setMarketCapGroup}
+                onSizeByChange={setSizeBy}
             />
             <div className="p-6">
-                {selectedCategory === 'crypto' && (
-                    <div className="flex flex-wrap justify-center items-center gap-x-6 gap-y-3 mb-4 text-sm text-gray-300">
-                        <div className="flex items-center gap-2">
-                            <span className="font-semibold">Timeframe:</span>
-                            {['1h', '24h', '7d', '30d'].map(tf => (
-                                <button key={tf} onClick={() => setTimeframe(tf)} className={`px-3 py-1 rounded-md transition-colors ${timeframe === tf ? 'bg-blue-600 text-white shadow-lg' : 'bg-gray-700 hover:bg-gray-600'}`}>
-                                    {tf.toUpperCase()}
-                                </button>
-                            ))}
-                        </div>
-                        <div className="flex items-center gap-2">
-                            <span className="font-semibold">Market Cap:</span>
-                            {[1, 2, 3, 4, 5].map(page => (
-                                <button key={page} onClick={() => setMarketCapGroup(page)} className={`px-3 py-1 rounded-md transition-colors ${marketCapGroup === page ? 'bg-blue-600 text-white shadow-lg' : 'bg-gray-700 hover:bg-gray-600'}`}>
-                                    #{(page - 1) * 100 + 1}-#{page * 100}
-                                </button>
-                            ))}
-                        </div>
-                        <div className="flex items-center gap-2">
-                            <span className="font-semibold">Size by:</span>
-                            <button onClick={() => setSizeBy('marketCap')} className={`px-3 py-1 rounded-md transition-colors ${sizeBy === 'marketCap' ? 'bg-blue-600 text-white shadow-lg' : 'bg-gray-700 hover:bg-gray-600'}`}>
-                                Market Cap
-                            </button>
-                            <button onClick={() => setSizeBy('volume24h')} className={`px-3 py-1 rounded-md transition-colors ${sizeBy === 'volume24h' ? 'bg-blue-600 text-white shadow-lg' : 'bg-gray-700 hover:bg-gray-600'}`}>
-                                Volume (24h)
-                            </button>
-                        </div>
-                    </div>
-                )}
                 {loading && (
                     <div className="flex items-center justify-center h-96">
                         <div className="text-center">
