@@ -968,7 +968,7 @@ const CryptoBubblesUI: React.FC = () => {
     return (
         <div className="fixed inset-0 w-screen h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 z-50">
             <Header
-                title="CRYPTO BUBBLES"
+                title="Crypto Forex Bubbles"
                 subtitle="Live Market Visualization"
                 onCategoryChange={handleCategoryChange}
                 onSearchChange={handleSearchChange}
@@ -1077,7 +1077,7 @@ const CryptoBubblesUI: React.FC = () => {
             </div>
             {selectedBubble && (
                 <div className="fixed bottom-8 right-8 bg-gray-800/95 backdrop-blur-lg border border-gray-700/40 rounded-3xl shadow-2xl max-w-md z-50 p-6 flex flex-col gap-4 animate-in slide-in-from-right">
-                    <div className="flex items-center justify-center mb-2">
+                    <div className="flex items-center justify-between mb-2">
                         <div className="flex items-center gap-3">
                             {selectedBubble.logoUrl && (
                                 <Image src={selectedBubble.logoUrl} alt={selectedBubble.symbol} width={40} height={40} className="rounded-full border border-gray-700/60 bg-gray-900/60" />
