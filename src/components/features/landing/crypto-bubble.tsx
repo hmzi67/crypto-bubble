@@ -236,7 +236,8 @@ const fetchRealForexData = async (): Promise<CryptoCoin[]> => {
                 currentRate: rate,
                 countryCode: currency.country,
                 category: currency.importance >= 70 ? "major" : currency.importance >= 40 ? "minor" : "exotic",
-                color: getMarketColor(change)
+                color: getMarketColor(change),
+                logoUrl: `https://flagcdn.com/w40/${currency.country.toLowerCase()}.png`
             };
         }).filter((item): item is CryptoCoin => item !== null);
     } catch (err) {
