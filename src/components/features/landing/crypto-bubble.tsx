@@ -776,7 +776,7 @@ const CryptoBubblesUI: React.FC = () => {
                 .append("text")
                 .attr("class", "rate-text")
                 .attr("text-anchor", "middle")
-                .attr("dy", selectedCategory === 'forex-pair' ? "0.9em" : "1.0em")
+                .attr("dy", selectedCategory === 'forex-pair' ? "0.9em" : "1.5em")
                 .style("font-family", "JetBrains Mono, Monaco, Consolas, monospace")
                 .style("font-weight", "700")
                 .style("font-size", (d) => `${Math.max(8, Math.min((d.radius ?? 0) * 0.16, 12))}px`) // Ensure minimum size of 8px
@@ -796,7 +796,7 @@ const CryptoBubblesUI: React.FC = () => {
             .append("text")
             .attr("class", "change-text")
             .attr("text-anchor", "middle")
-            .attr("dy", (selectedCategory === 'forex' || selectedCategory === 'forex-pair') ? "1.8em" : "1.4em")
+            .attr("dy", (selectedCategory === 'forex' || selectedCategory === 'forex-pair') ? "2em" : "1.4em")
             .style("font-family", "Inter, -apple-system, BlinkMacSystemFont, sans-serif")
             .style("font-weight", "800")
             .style("font-size", (d) => `${Math.max(9, Math.min((d.radius ?? 0) * 0.20, 16))}px`) // Ensure minimum size of 9px
@@ -1077,7 +1077,7 @@ const CryptoBubblesUI: React.FC = () => {
             </div>
             {selectedBubble && (
                 <div className="fixed bottom-8 right-8 bg-gray-800/95 backdrop-blur-lg border border-gray-700/40 rounded-3xl shadow-2xl max-w-md z-50 p-6 flex flex-col gap-4 animate-in slide-in-from-right">
-                    <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center justify-center mb-2">
                         <div className="flex items-center gap-3">
                             {selectedBubble.logoUrl && (
                                 <Image src={selectedBubble.logoUrl} alt={selectedBubble.symbol} width={40} height={40} className="rounded-full border border-gray-700/60 bg-gray-900/60" />
@@ -1115,9 +1115,9 @@ const CryptoBubblesUI: React.FC = () => {
                         </div>
                         <button
                             onClick={() => setSelectedBubble(null)}
-                            className="text-gray-400 hover:text-white transition-colors p-2 hover:bg-gray-700/50 rounded-lg"
+                            className="text-gray-400 hover:text-white transition-colors p-2 hover:bg-gray-700/50 rounded-lg mb-5"
                         >
-                            â
+                            x
                         </button>
                     </div>
                     {selectedCategory === 'crypto' ? (
