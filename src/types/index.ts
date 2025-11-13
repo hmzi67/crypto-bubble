@@ -41,6 +41,24 @@ export interface ForexPairBubbleData {
   spread: number;
 }
 
+export interface StockBubbleData {
+  id: string;
+  symbol: string; // e.g., "AAPL", "MSFT"
+  name: string; // e.g., "Apple Inc.", "Microsoft Corporation"
+  marketCap: number;
+  priceChange24h: number;
+  volume24h: number;
+  category: "stock";
+  color: string;
+  size: number;
+  price: number;
+  sector?: string; // e.g., "Technology", "Healthcare"
+  open?: number;
+  high?: number;
+  low?: number;
+  previousClose?: number;
+}
+
 export type CryptoBubbleData = {
   id: string;
   symbol: string;
@@ -55,7 +73,8 @@ export type CryptoBubbleData = {
     | "forex"
     | "major"
     | "minor"
-    | "exotic";
+    | "exotic"
+    | "stock";
   color: string;
   size: number;
   currentRate?: number;
@@ -63,4 +82,10 @@ export type CryptoBubbleData = {
   bid?: number;
   ask?: number;
   spread?: number;
+  sector?: string;
+  price?: number;
+  open?: number;
+  high?: number;
+  low?: number;
+  previousClose?: number;
 };

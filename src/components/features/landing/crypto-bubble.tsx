@@ -3,6 +3,7 @@ import React, { useEffect, useRef, useState } from "react";
 import * as d3 from "d3";
 import Image from "next/image";
 import Header from "@/components/layout/header";
+import { fetchStockData, fetchStockHistoricalData } from "@/services/stockApiService";
 type CryptoCoin = {
     id: string;
     symbol: string;
@@ -23,7 +24,7 @@ type CryptoCoin = {
     vy?: number;
     fx?: number | null;
     fy?: number | null;
-    category?: "crypto" | "forex" | "forex-pair" | "major" | "minor" | "exotic";
+    category?: "crypto" | "forex" | "forex-pair" | "major" | "minor" | "exotic" | "stock";
     color?: string;
     size?: number;
     currentRate?: number;
@@ -33,6 +34,11 @@ type CryptoCoin = {
     bid?: number;
     ask?: number;
     spread?: number;
+    sector?: string;
+    open?: number;
+    high?: number;
+    low?: number;
+    previousClose?: number;
 };
 type CoinGeckoCoin = {
     id: string;
@@ -336,6 +342,37 @@ const fetchRealForexPairsData = async (): Promise<CryptoCoin[]> => {
         return [];
     }
 };
+const fetchRealStockData = async (): Promise<CryptoCoin[]> => {
+    try {
+        const stockData = await fetchStockData(30);
+        
+        if (!stockData || stockData.length === 0) {
+            console.error('No stock data received');
+            return [];
+        }
+        
+        return stockData.map((stock): CryptoCoin => ({
+            id: stock.id,
+            symbol: stock.symbol,
+            name: stock.name,
+            change24h: stock.priceChange24h,
+            marketCap: stock.marketCap,
+            price: stock.price,
+            volume24h: stock.volume24h,
+            category: "stock",
+            color: stock.color,
+            sector: stock.sector,
+            open: stock.open,
+            high: stock.high,
+            low: stock.low,
+            previousClose: stock.previousClose,
+        }));
+    } catch (err) {
+        console.error("Error fetching real stock data:", err);
+        return [];
+    }
+};
+
 const fetchHistoricalData = async (coinId: string): Promise<{ time: number; price: number }[] | null> => {
     try {
         const response = await fetch(
@@ -558,6 +595,9 @@ const CryptoBubblesUI: React.FC = () => {
                         break;
                     case "forex-pair":
                         data = await fetchRealForexPairsData();
+                        break;
+                    case "stock":
+                        data = await fetchRealStockData();
                         break;
                     default:
                         data = await fetchRealCryptoData();
@@ -908,12 +948,17 @@ const CryptoBubblesUI: React.FC = () => {
         };
     }, [marketData, dimensions, loading, error, selectedCategory, timeframe, sizeBy]);
     useEffect(() => {
-        if (selectedBubble && selectedBubble.category === 'crypto') {
+        if (selectedBubble && (selectedBubble.category === 'crypto' || selectedBubble.category === 'stock')) {
             const getHistoricalData = async () => {
                 setIsChartLoading(true);
                 setHistoricalData(null);
-                const data = await fetchHistoricalData(selectedBubble.id);
-                setHistoricalData(data);
+                let data;
+                if (selectedBubble.category === 'crypto') {
+                    data = await fetchHistoricalData(selectedBubble.id);
+                } else if (selectedBubble.category === 'stock') {
+                    data = await fetchStockHistoricalData(selectedBubble.symbol);
+                }
+                setHistoricalData(data || null);
                 setIsChartLoading(false);
             };
             void getHistoricalData();
@@ -993,7 +1038,7 @@ const CryptoBubblesUI: React.FC = () => {
                                 <div className="absolute inset-0 animate-ping rounded-full h-20 w-20 border border-blue-400 opacity-20 mx-auto"></div>
                             </div>
                             <p className="text-white font-medium text-lg">
-                                Loading {selectedCategory === 'crypto' ? 'cryptocurrency' : selectedCategory === 'forex' ? 'forex currency' : 'forex pair'} bubbles...
+                                Loading {selectedCategory === 'crypto' ? 'cryptocurrency' : selectedCategory === 'forex' ? 'forex currency' : selectedCategory === 'stock' ? 'stock market' : 'forex pair'} bubbles...
                             </p>
                             <p className="text-gray-400 text-sm mt-2">
                                 Current Time (UTC): {getCurrentTimeUTC()}
@@ -1020,7 +1065,7 @@ const CryptoBubblesUI: React.FC = () => {
                         <div className="text-center bg-yellow-500/10 border border-yellow-500/30 rounded-xl p-8 max-w-md backdrop-blur-sm">
                             <p className="text-yellow-400 font-medium text-lg mb-2">No Results Found</p>
                             <p className="text-gray-400 mb-4">
-                                No {selectedCategory === 'crypto' ? 'cryptocurrencies' : selectedCategory === 'forex' ? 'currencies' : 'forex pairs'} match your search term {searchTerm}
+                                No {selectedCategory === 'crypto' ? 'cryptocurrencies' : selectedCategory === 'forex' ? 'currencies' : selectedCategory === 'stock' ? 'stocks' : 'forex pairs'} match your search term {searchTerm}
                             </p>
                             <button
                                 onClick={() => setSearchTerm("")}
@@ -1103,6 +1148,7 @@ const CryptoBubblesUI: React.FC = () => {
                                     <span className="text-white text-xl font-bold">{selectedBubble.name}</span>
                                     {selectedBubble.category && (
                                         <span className={`px-2 py-1 rounded-full text-xs font-semibold border ${selectedBubble.category === 'crypto' ? 'bg-blue-700/20 text-blue-300 border-blue-700/40' :
+                                            selectedBubble.category === 'stock' ? 'bg-indigo-700/20 text-indigo-300 border-indigo-700/40' :
                                             selectedBubble.category === 'major' ? 'bg-green-700/20 text-green-300 border-green-700/40' :
                                                 selectedBubble.category === 'minor' ? 'bg-blue-700/20 text-blue-300 border-blue-700/40' :
                                                     selectedBubble.category === 'forex-pair' ? 'bg-yellow-700/20 text-yellow-300 border-yellow-700/40' :
@@ -1156,6 +1202,72 @@ const CryptoBubblesUI: React.FC = () => {
                                     )}
                                     {selectedBubbleChange > 0 ? '+' : ''}{selectedBubbleChange.toFixed(2)}%
                                 </span>
+                            </div>
+                            {isChartLoading && (
+                                <div className="flex justify-center items-center h-32">
+                                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-400"></div>
+                                </div>
+                            )}
+                            {!isChartLoading && historicalData && (
+                                <HistoricalChart data={historicalData} />
+                            )}
+                        </>
+                    ) : selectedCategory === 'stock' ? (
+                        <>
+                            <div className="flex flex-col gap-3 py-2">
+                                <div className="flex items-center gap-2 justify-between">
+                                    <span className="text-gray-400 text-sm">Current Price:</span>
+                                    <span className="text-white font-mono text-xl font-bold">${selectedBubble.price?.toFixed(2) || 'N/A'}</span>
+                                </div>
+                                <div className="flex items-center gap-2 justify-between py-2 border-t border-gray-700/40">
+                                    <span className="text-gray-400 text-sm">Change (24h):</span>
+                                    <span className={`font-bold text-lg flex items-center gap-2 ${selectedBubbleChange > 0 ? "text-emerald-400" : selectedBubbleChange < 0 ? "text-red-400" : "text-gray-400"}`}>
+                                        {selectedBubbleChange > 0 ? (
+                                            <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                                                <path d="M4 12L8.5 7.5L12 11L16 6" stroke="#10b981" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                                                <circle cx="16" cy="6" r="2" fill="#10b981" />
+                                            </svg>
+                                        ) : selectedBubbleChange < 0 ? (
+                                            <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                                                <path d="M4 8L8.5 12.5L12 9L16 14" stroke="#f87171" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                                                <circle cx="16" cy="14" r="2" fill="#f87171" />
+                                            </svg>
+                                        ) : (
+                                            <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+                                                <line x1="4" y1="10" x2="16" y2="10" stroke="#9ca3af" strokeWidth="2" strokeLinecap="round" />
+                                            </svg>
+                                        )}
+                                        {selectedBubbleChange > 0 ? '+' : ''}{selectedBubbleChange.toFixed(2)}%
+                                    </span>
+                                </div>
+                                {selectedBubble.sector && (
+                                    <div className="flex items-center gap-2 justify-between">
+                                        <span className="text-gray-400 text-sm">Sector:</span>
+                                        <span className="text-blue-300 font-semibold">{selectedBubble.sector}</span>
+                                    </div>
+                                )}
+                                <div className="grid grid-cols-2 gap-3 py-2 border-t border-gray-700/40">
+                                    <div className="text-center p-2 rounded-lg bg-gray-700/30">
+                                        <div className="text-xs text-gray-400">Open</div>
+                                        <div className="text-white font-mono font-bold">${selectedBubble.open?.toFixed(2) || '-'}</div>
+                                    </div>
+                                    <div className="text-center p-2 rounded-lg bg-gray-700/30">
+                                        <div className="text-xs text-gray-400">Prev Close</div>
+                                        <div className="text-white font-mono font-bold">${selectedBubble.previousClose?.toFixed(2) || '-'}</div>
+                                    </div>
+                                    <div className="text-center p-2 rounded-lg bg-green-700/20 border border-green-700/40">
+                                        <div className="text-xs text-green-400 font-bold">High</div>
+                                        <div className="text-green-300 font-mono font-bold">${selectedBubble.high?.toFixed(2) || '-'}</div>
+                                    </div>
+                                    <div className="text-center p-2 rounded-lg bg-red-700/20 border border-red-700/40">
+                                        <div className="text-xs text-red-400 font-bold">Low</div>
+                                        <div className="text-red-300 font-mono font-bold">${selectedBubble.low?.toFixed(2) || '-'}</div>
+                                    </div>
+                                </div>
+                                <div className="flex items-center gap-2 justify-between">
+                                    <span className="text-gray-400 text-sm">Volume:</span>
+                                    <span className="text-white font-mono font-bold">{selectedBubble.volume24h !== undefined ? `${(selectedBubble.volume24h / 1e6).toFixed(1)}M` : '-'}</span>
+                                </div>
                             </div>
                             {isChartLoading && (
                                 <div className="flex justify-center items-center h-32">

@@ -1,7 +1,7 @@
 "use client"
 
 import React, {useEffect, useState} from "react";
-import { Search, TrendingUp, DollarSign, BarChart3 } from "lucide-react";
+import { Search, TrendingUp, DollarSign, BarChart3, LineChart } from "lucide-react";
 
 type HeaderProps = {
     title?: string;
@@ -59,11 +59,12 @@ const Header: React.FC<HeaderProps> = ({
     const defaultCategories = [
         { id: "crypto", label: "Crypto", icon: <TrendingUp className="w-4 h-4" /> },
         { id: "forex", label: "Forex", icon: <DollarSign className="w-4 h-4" /> },
-        { id: "forex-pair", label: "Forex Pairs", icon: <BarChart3 className="w-4 h-4" /> }
+        { id: "forex-pair", label: "Forex Pairs", icon: <BarChart3 className="w-4 h-4" /> },
+        { id: "stock", label: "Stocks", icon: <LineChart className="w-4 h-4" /> }
     ];
 
     const categoriesData = categories || defaultCategories;
-    const searchPlaceholder = placeholder || `Search ${selectedCategory === 'crypto' ? 'cryptocurrency' : selectedCategory === 'forex' ? 'currencies' : 'forex pairs'}`;
+    const searchPlaceholder = placeholder || `Search ${selectedCategory === 'crypto' ? 'cryptocurrency' : selectedCategory === 'forex' ? 'currencies' : selectedCategory === 'stock' ? 'stocks' : 'forex pairs'}`;
 
     const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const value = e.target.value;

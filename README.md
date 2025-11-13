@@ -1,9 +1,54 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Crypto Forex Bubbles
+
+A beautiful, interactive real-time market visualization tool built with Next.js and D3.js. View cryptocurrencies, forex currencies, forex pairs, and stock markets as animated bubbles with live data.
+
+## Features
+
+- 🔵 **Cryptocurrency Bubbles** - Top cryptocurrencies with live market data from CoinGecko
+- 💱 **Forex Currencies** - Major, minor, and exotic currency pairs with exchange rates
+- 📊 **Forex Pairs** - Interactive forex pair visualization with bid/ask spreads
+- 📈 **Stock Market** - Real-time stock data powered by AlphaVantage API
+- ⚡ **Live Updates** - Real-time market data with smooth animations
+- 🎨 **Beautiful UI** - Glassmorphism design with neon glow effects
+- 📱 **Responsive** - Works on desktop and mobile devices
+- 🔍 **Search & Filter** - Find specific assets quickly
 
 ## Getting Started
 
-First, run the development server:
+### Prerequisites
 
+- Node.js 18+ 
+- npm, yarn, pnpm, or bun
+
+### Installation
+
+1. Clone the repository:
+```bash
+git clone https://github.com/hmzi67/crypto-bubble.git
+cd crypto-bubble
+```
+
+2. Install dependencies:
+```bash
+npm install
+# or
+yarn install
+# or
+pnpm install
+# or
+bun install
+```
+
+3. Set up environment variables:
+```bash
+cp .env.example .env.local
+```
+
+Edit `.env.local` and add your API keys:
+- **AlphaVantage API Key** (Required for stock data): Get a free key from [https://www.alphavantage.co/support/#api-key](https://www.alphavantage.co/support/#api-key)
+- **CoinGecko API Key** (Optional): For higher rate limits on crypto data
+
+4. Run the development server:
 ```bash
 npm run dev
 # or
@@ -14,11 +59,39 @@ pnpm dev
 bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+5. Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## API Information
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+### Data Sources
+
+- **Cryptocurrency Data**: [CoinGecko API](https://www.coingecko.com/en/api)
+  - Free tier: 10-30 calls/minute
+  - Demo mode available without API key
+  
+- **Forex Data**: [ExchangeRate API](https://www.exchangerate-api.com/)
+  - Free tier: 1,500 requests/month
+  - No API key required for basic access
+  
+- **Stock Market Data**: [AlphaVantage API](https://www.alphavantage.co/)
+  - Free tier: 25 requests/day
+  - API key required (get yours free at the link above)
+  - Falls back to demo data if rate limit is exceeded
+
+### API Rate Limits
+
+The free tier of AlphaVantage has a limit of 25 API calls per day. If you exceed this limit, the app will automatically use fallback demo data. For production use, consider:
+- Implementing a caching layer
+- Upgrading to a paid API plan
+- Using multiple API keys with load balancing
+
+## Technology Stack
+
+- **Framework**: Next.js 15 with React 19
+- **Visualization**: D3.js for bubble chart animations
+- **Styling**: Tailwind CSS with custom animations
+- **TypeScript**: Full type safety
+- **Icons**: Lucide React
 
 ## Learn More
 
