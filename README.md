@@ -17,18 +17,20 @@ A beautiful, interactive real-time market visualization tool built with Next.js 
 
 ### Prerequisites
 
-- Node.js 18+ 
+- Node.js 18+
 - npm, yarn, pnpm, or bun
 
 ### Installation
 
 1. Clone the repository:
+
 ```bash
 git clone https://github.com/hmzi67/crypto-bubble.git
 cd crypto-bubble
 ```
 
 2. Install dependencies:
+
 ```bash
 npm install
 # or
@@ -40,15 +42,18 @@ bun install
 ```
 
 3. Set up environment variables:
+
 ```bash
 cp .env.example .env.local
 ```
 
 Edit `.env.local` and add your API keys:
+
 - **AlphaVantage API Key** (Required for stock data): Get a free key from [https://www.alphavantage.co/support/#api-key](https://www.alphavantage.co/support/#api-key)
 - **CoinGecko API Key** (Optional): For higher rate limits on crypto data
 
 4. Run the development server:
+
 ```bash
 npm run dev
 # or
@@ -68,11 +73,9 @@ bun dev
 - **Cryptocurrency Data**: [CoinGecko API](https://www.coingecko.com/en/api)
   - Free tier: 10-30 calls/minute
   - Demo mode available without API key
-  
 - **Forex Data**: [ExchangeRate API](https://www.exchangerate-api.com/)
   - Free tier: 1,500 requests/month
   - No API key required for basic access
-  
 - **Stock Market Data**: [AlphaVantage API](https://www.alphavantage.co/)
   - Free tier: 25 requests/day
   - API key required (get yours free at the link above)
@@ -81,6 +84,7 @@ bun dev
 ### API Rate Limits
 
 The free tier of AlphaVantage has a limit of 25 API calls per day. If you exceed this limit, the app will automatically use fallback demo data. For production use, consider:
+
 - Implementing a caching layer
 - Upgrading to a paid API plan
 - Using multiple API keys with load balancing
