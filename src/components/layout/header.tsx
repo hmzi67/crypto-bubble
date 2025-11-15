@@ -1,7 +1,9 @@
 "use client"
 
 import React, {useEffect, useState} from "react";
-import { Search, TrendingUp, DollarSign, BarChart3, LineChart } from "lucide-react";
+import { Search, TrendingUp, DollarSign, BarChart3, LineChart, User, LogOut, LogIn } from "lucide-react";
+import { useSession, signOut } from "next-auth/react";
+import Link from "next/link";
 
 type HeaderProps = {
     title?: string;
@@ -47,6 +49,8 @@ const Header: React.FC<HeaderProps> = ({
     onSizeByChange,
 }) => {
     const [time, setTime] = useState(new Date().toLocaleTimeString());
+    const [showUserMenu, setShowUserMenu] = useState(false);
+    const { data: session, status } = useSession();
 
     useEffect(() => {
         const interval = setInterval(() => {
@@ -129,6 +133,64 @@ const Header: React.FC<HeaderProps> = ({
                                 className="bg-gray-800/80 backdrop-blur-sm text-white pl-12 pr-4 py-3 rounded-xl border border-gray-700/50 focus:border-blue-500/50 focus:bg-gray-800 focus:outline-none w-72 transition-all duration-300 shadow-inner"
                             />
                             <div className="absolute inset-0 rounded-xl bg-gradient-to-r from-blue-500/10 to-purple-500/10 opacity-0 group-focus-within:opacity-100 transition-opacity duration-300 pointer-events-none"></div>
+                        </div>
+                    )}
+
+                    {/* Auth Buttons */}
+                    {status === "loading" ? (
+                        <div className="w-24 h-10 bg-gray-800/50 rounded-lg animate-pulse"></div>
+                    ) : session ? (
+                        <div className="relative">
+                            <button
+                                onClick={() => setShowUserMenu(!showUserMenu)}
+                                className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-gray-800/50 border border-gray-700/50 hover:bg-gray-700/50 transition-all"
+                            >
+                                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center">
+                                    <User className="w-4 h-4 text-white" />
+                                </div>
+                                <span className="text-gray-300 font-medium max-w-[120px] truncate">
+                                    {session.user?.name || session.user?.email}
+                                </span>
+                            </button>
+                            
+                            {showUserMenu && (
+                                <>
+                                    <div 
+                                        className="fixed inset-0 z-20" 
+                                        onClick={() => setShowUserMenu(false)}
+                                    ></div>
+                                    <div className="absolute right-0 mt-2 w-56 bg-gray-800 border border-gray-700/50 rounded-lg shadow-2xl z-30 overflow-hidden">
+                                        <div className="p-3 border-b border-gray-700/50">
+                                            <p className="text-sm text-gray-400">Signed in as</p>
+                                            <p className="text-sm font-medium text-white truncate">{session.user?.email}</p>
+                                        </div>
+                                        <button
+                                            onClick={() => {
+                                                setShowUserMenu(false);
+                                                signOut({ callbackUrl: '/auth/login' });
+                                            }}
+                                            className="w-full flex items-center gap-2 px-4 py-3 text-left text-gray-300 hover:bg-gray-700/50 transition-colors"
+                                        >
+                                            <LogOut className="w-4 h-4" />
+                                            <span className="text-sm">Sign Out</span>
+                                        </button>
+                                    </div>
+                                </>
+                            )}
+                        </div>
+                    ) : (
+                        <div className="flex items-center gap-2">
+                            <Link href="/auth/login">
+                                <button className="flex items-center gap-2 px-4 py-2.5 rounded-lg text-gray-300 hover:text-white hover:bg-gray-800/50 transition-all border border-transparent hover:border-gray-700/50">
+                                    <LogIn className="w-4 h-4" />
+                                    <span className="font-medium">Login</span>
+                                </button>
+                            </Link>
+                            <Link href="/auth/signup">
+                                <button className="flex items-center gap-2 px-5 py-2.5 rounded-lg bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white font-semibold transition-all shadow-lg">
+                                    Sign Up
+                                </button>
+                            </Link>
                         </div>
                     )}
                 </div>
