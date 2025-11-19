@@ -1,14 +1,14 @@
 "use client";
 
 import { useState, useEffect, Suspense } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { AlertCircle, CheckCircle, TrendingUp, Loader2 } from "lucide-react";
 
 function VerifyEmailForm() {
-  const router = useRouter();
+  // const router = useRouter();
   const searchParams = useSearchParams();
   const token = searchParams.get("token");
 
@@ -40,7 +40,7 @@ function VerifyEmailForm() {
         } else {
           setSuccess(true);
         }
-      } catch (err) {
+      } catch {
         setError("Something went wrong. Please try again.");
       } finally {
         setIsLoading(false);
@@ -54,7 +54,7 @@ function VerifyEmailForm() {
     return (
       <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 flex items-center justify-center p-4">
         <div className="absolute inset-0 bg-[url('/grid.svg')] bg-center [mask-image:linear-gradient(180deg,white,rgba(255,255,255,0))] opacity-10"></div>
-        
+
         <div className="w-full max-w-md relative z-10">
           <div className="text-center mb-8">
             <div className="inline-flex items-center justify-center w-16 h-16 rounded-xl bg-gradient-to-br from-blue-500 via-purple-500 to-green-500 mb-4 shadow-lg">
@@ -85,7 +85,7 @@ function VerifyEmailForm() {
     return (
       <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 flex items-center justify-center p-4">
         <div className="absolute inset-0 bg-[url('/grid.svg')] bg-center [mask-image:linear-gradient(180deg,white,rgba(255,255,255,0))] opacity-10"></div>
-        
+
         <div className="w-full max-w-md relative z-10">
           <div className="text-center mb-8">
             <div className="inline-flex items-center justify-center w-16 h-16 rounded-xl bg-gradient-to-br from-blue-500 via-purple-500 to-green-500 mb-4 shadow-lg">
@@ -127,7 +127,7 @@ function VerifyEmailForm() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-[url('/grid.svg')] bg-center [mask-image:linear-gradient(180deg,white,rgba(255,255,255,0))] opacity-10"></div>
-      
+
       <div className="w-full max-w-md relative z-10">
         <div className="text-center mb-8">
           <div className="inline-flex items-center justify-center w-16 h-16 rounded-xl bg-gradient-to-br from-blue-500 via-purple-500 to-green-500 mb-4 shadow-lg">

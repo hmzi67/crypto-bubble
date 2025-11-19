@@ -2,8 +2,9 @@
 
 import React, {useEffect, useState} from "react";
 import { Search, TrendingUp, DollarSign, BarChart3, LineChart, User, LogOut, LogIn } from "lucide-react";
-import { useSession, signOut } from "next-auth/react";
 import Link from "next/link";
+import { useSession, signOut } from "next-auth/react";
+
 
 type HeaderProps = {
     title?: string;

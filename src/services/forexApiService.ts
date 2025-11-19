@@ -201,7 +201,7 @@ export async function fetchForexPairs(
           currentRate = (rates[pair.quote] || 1) / (rates[pair.base] || 1);
         }
 
-        const baseRate = getHistoricalPairRate(pair.base, pair.quote);
+        const baseRate = getHistoricalPairRate();
         const change24h = ((currentRate - baseRate) / baseRate) * 100;
         const spread = currentRate * 0.0001; // Simulate spread
 
@@ -245,10 +245,9 @@ function getHistoricalRate(currency: string): number {
   return variations[currency] || 1;
 }
 
-function getHistoricalPairRate(_base: string, _quote: string): number {
+function getHistoricalPairRate(): number {
   // Simulate historical pair rates
-  // Note: base and quote parameters are not used in this simple simulation
-  // but are kept for future API integration
+  // Parameters removed (unused)
   return Math.random() * 2 + 0.5; // Simple simulation
 }
 
