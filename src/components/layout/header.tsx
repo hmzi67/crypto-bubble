@@ -25,14 +25,15 @@ type HeaderProps = {
     timeframe?: string;
     marketCapGroup?: number;
     sizeBy?: 'marketCap' | 'volume24h';
+    scaleMode?: 'realistic' | 'balanced';
     onTimeframeChange?: (value: string) => void;
     onMarketCapGroupChange?: (value: number) => void;
     onSizeByChange?: (value: 'marketCap' | 'volume24h') => void;
+    onScaleModeChange?: (value: 'realistic' | 'balanced') => void;
 };
 
 const Header: React.FC<HeaderProps> = ({
     title = "MARKET BUBBLES",
-    subtitle = "Live Market Visualization",
     onSearchChange,
     onCategoryChange,
     searchTerm = "",
@@ -45,9 +46,11 @@ const Header: React.FC<HeaderProps> = ({
     timeframe,
     marketCapGroup,
     sizeBy,
+    scaleMode,
     onTimeframeChange,
     onMarketCapGroupChange,
     onSizeByChange,
+    onScaleModeChange,
 }) => {
     const [time, setTime] = useState(new Date().toLocaleTimeString());
     const [showUserMenu, setShowUserMenu] = useState(false);
@@ -62,10 +65,10 @@ const Header: React.FC<HeaderProps> = ({
     }, [])
 
     const defaultCategories = [
-        { id: "crypto", label: "Crypto", icon: <TrendingUp className="w-4 h-4" /> },
-        { id: "forex", label: "Forex", icon: <DollarSign className="w-4 h-4" /> },
-        { id: "forex-pair", label: "Forex Pairs", icon: <BarChart3 className="w-4 h-4" /> },
-        { id: "stock", label: "Stocks", icon: <LineChart className="w-4 h-4" /> }
+        { id: "crypto", label: "Crypto", icon: <TrendingUp className="w-3.5 h-3.5" /> },
+        { id: "forex", label: "Forex", icon: <DollarSign className="w-3.5 h-3.5" /> },
+        { id: "forex-pair", label: "Forex Pairs", icon: <BarChart3 className="w-3.5 h-3.5" /> },
+        { id: "stock", label: "Stocks", icon: <LineChart className="w-3.5 h-3.5" /> }
     ];
 
     const categoriesData = categories || defaultCategories;
@@ -76,81 +79,87 @@ const Header: React.FC<HeaderProps> = ({
         onSearchChange?.(value);
     };
 
+    // Compact select styling
+    const selectClassName = "bg-gray-800/80 border border-gray-700/50 rounded-md px-2 py-1 text-xs text-white focus:outline-none focus:ring-1 focus:ring-blue-500 transition-all appearance-none cursor-pointer";
+    const selectStyle = { 
+        backgroundImage: `url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e")`, 
+        backgroundPosition: 'right 0.25rem center', 
+        backgroundRepeat: 'no-repeat', 
+        backgroundSize: '1em 1em',
+        paddingRight: '1.5rem'
+    };
+
     return (
-        <div className="min-w-full bg-gradient-to-r from-gray-900 via-gray-800 to-gray-900 border-b border-gray-700/50 shadow-2xl">
-            {/* Main Header */}
-            <div className="flex items-center justify-between p-6">
-                {/* Left Section - Brand and Categories */}
-                <div className="flex items-center gap-6">
-                    {/* Brand Logo */}
-                    <div className="flex items-center gap-3">
-                        <div className="relative">
-                            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 via-purple-500 to-green-500 flex items-center justify-center shadow-lg">
-                                <span className="text-white font-black text-lg">
-                                    {title.split(' ').map(word => word[0]).join('').substring(0, 2)}
-                                </span>
+        <header className="w-full bg-gradient-to-r from-gray-900 via-gray-800 to-gray-900 border-b border-gray-700/50 shadow-lg sticky top-0 z-50">
+            {/* Main Header Row - Height: 56px */}
+            <div className="flex items-center justify-between px-3 h-14 gap-2">
+                
+                {/* Left: Logo + Categories */}
+                <div className="flex items-center gap-3 flex-shrink-0">
+                    {/* Compact Logo */}
+                    <div className="flex items-center gap-2">
+                        <div className="relative flex-shrink-0">
+                            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 via-purple-500 to-green-500 flex items-center justify-center shadow">
+                                <span className="text-white font-black text-xs">CF</span>
                             </div>
-                            <div className="absolute -top-1 -right-1 w-4 h-4 bg-green-400 rounded-full animate-pulse shadow-lg"></div>
+                            <div className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
                         </div>
-                        <div>
-                            <h1 className=" text-2xl font-black tracking-wider bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
-                                {title}
-                            </h1>
-                            <p className="text-gray-400 text-xs font-medium">{subtitle}</p>
-                        </div>
+                        <h1 className="text-base font-bold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent whitespace-nowrap hidden lg:block">
+                            {title}
+                        </h1>
                     </div>
 
                     {/* Category Tabs */}
                     {showCategories && (
-                        <div className="flex items-center gap-2 bg-gray-800/50 p-1 rounded-xl border border-gray-700/50 backdrop-blur-sm">
+                        <div className="flex items-center gap-0.5 bg-gray-800/60 p-0.5 rounded-lg border border-gray-700/40">
                             {categoriesData.map((category) => (
                                 <button
                                     key={category.id}
                                     onClick={() => onCategoryChange?.(category.id)}
-                                    className={`flex items-center gap-2 px-4 py-2.5 rounded-lg font-semibold transition-all duration-300 ${selectedCategory === category.id
-                                        ? "bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-lg transform scale-105"
-                                        : "text-gray-300 hover:text-white hover:bg-gray-700/50"
-                                        }`}
+                                    className={`flex items-center gap-1 px-2.5 py-1.5 rounded-md text-xs font-semibold transition-all duration-150 ${
+                                        selectedCategory === category.id
+                                            ? "bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow"
+                                            : "text-gray-400 hover:text-white hover:bg-gray-700/50"
+                                    }`}
                                 >
                                     {category.icon}
-                                    {category.label}
+                                    <span className="hidden sm:inline">{category.label}</span>
                                 </button>
                             ))}
                         </div>
                     )}
                 </div>
 
-                {/* Right Section - Controls */}
-                <div className="flex items-center gap-4">
-                    {/* Enhanced Search Bar */}
+                {/* Right: Search + Auth */}
+                <div className="flex items-center gap-2 flex-shrink-0">
+                    {/* Compact Search */}
                     {showSearch && (
-                        <div className="relative group">
-                            <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5 group-focus-within:text-blue-400 transition-colors z-10" />
+                        <div className="relative">
+                            <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-500 w-3.5 h-3.5" />
                             <input
                                 type="text"
                                 placeholder={searchPlaceholder}
                                 value={searchTerm}
                                 onChange={handleSearchChange}
-                                className="bg-gray-800/80 backdrop-blur-sm text-white pl-12 pr-4 py-3 rounded-xl border border-gray-700/50 focus:border-blue-500/50 focus:bg-gray-800 focus:outline-none w-72 transition-all duration-300 shadow-inner"
+                                className="bg-gray-800/70 text-white text-xs pl-7 pr-3 py-1.5 rounded-md border border-gray-700/50 focus:border-blue-500/50 focus:outline-none w-36 lg:w-48 transition-all"
                             />
-                            <div className="absolute inset-0 rounded-xl bg-gradient-to-r from-blue-500/10 to-purple-500/10 opacity-0 group-focus-within:opacity-100 transition-opacity duration-300 pointer-events-none"></div>
                         </div>
                     )}
 
-                    {/* Auth Buttons */}
+                    {/* Auth */}
                     {status === "loading" ? (
-                        <div className="w-24 h-10 bg-gray-800/50 rounded-lg animate-pulse"></div>
+                        <div className="w-16 h-7 bg-gray-800/50 rounded animate-pulse"></div>
                     ) : session ? (
                         <div className="relative">
                             <button
                                 onClick={() => setShowUserMenu(!showUserMenu)}
-                                className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-gray-800/50 border border-gray-700/50 hover:bg-gray-700/50 transition-all"
+                                className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-gray-800/50 border border-gray-700/50 hover:bg-gray-700/50 transition-all"
                             >
-                                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center">
-                                    <User className="w-4 h-4 text-white" />
+                                <div className="w-6 h-6 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center">
+                                    <User className="w-3 h-3 text-white" />
                                 </div>
-                                <span className="text-gray-300 font-medium max-w-[120px] truncate">
-                                    {session.user?.name || session.user?.email}
+                                <span className="text-gray-300 text-xs font-medium max-w-[60px] truncate hidden sm:inline">
+                                    {session.user?.name || session.user?.email?.split('@')[0]}
                                 </span>
                             </button>
                             
@@ -160,35 +169,35 @@ const Header: React.FC<HeaderProps> = ({
                                         className="fixed inset-0 z-20" 
                                         onClick={() => setShowUserMenu(false)}
                                     ></div>
-                                    <div className="absolute right-0 mt-2 w-56 bg-gray-800 border border-gray-700/50 rounded-lg shadow-2xl z-30 overflow-hidden">
-                                        <div className="p-3 border-b border-gray-700/50">
-                                            <p className="text-sm text-gray-400">Signed in as</p>
-                                            <p className="text-sm font-medium text-white truncate">{session.user?.email}</p>
+                                    <div className="absolute right-0 mt-1 w-48 bg-gray-800 border border-gray-700/50 rounded-lg shadow-xl z-30 overflow-hidden">
+                                        <div className="p-2 border-b border-gray-700/50">
+                                            <p className="text-xs text-gray-400">Signed in as</p>
+                                            <p className="text-xs font-medium text-white truncate">{session.user?.email}</p>
                                         </div>
                                         <button
                                             onClick={() => {
                                                 setShowUserMenu(false);
                                                 signOut({ callbackUrl: '/auth/login' });
                                             }}
-                                            className="w-full flex items-center gap-2 px-4 py-3 text-left text-gray-300 hover:bg-gray-700/50 transition-colors"
+                                            className="w-full flex items-center gap-2 px-3 py-2 text-left text-gray-300 hover:bg-gray-700/50 transition-colors text-xs"
                                         >
-                                            <LogOut className="w-4 h-4" />
-                                            <span className="text-sm">Sign Out</span>
+                                            <LogOut className="w-3.5 h-3.5" />
+                                            Sign Out
                                         </button>
                                     </div>
                                 </>
                             )}
                         </div>
                     ) : (
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-1">
                             <Link href="/auth/login">
-                                <button className="flex items-center gap-2 px-4 py-2.5 rounded-lg text-gray-300 hover:text-white hover:bg-gray-800/50 transition-all border border-transparent hover:border-gray-700/50">
-                                    <LogIn className="w-4 h-4" />
-                                    <span className="font-medium">Login</span>
+                                <button className="flex items-center gap-1 px-2 py-1.5 rounded-md text-gray-300 hover:text-white hover:bg-gray-800/50 transition-all text-xs font-medium">
+                                    <LogIn className="w-3.5 h-3.5" />
+                                    <span className="hidden sm:inline">Login</span>
                                 </button>
                             </Link>
                             <Link href="/auth/signup">
-                                <button className="flex items-center gap-2 px-5 py-2.5 rounded-lg bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white font-semibold transition-all shadow-lg">
+                                <button className="px-3 py-1.5 rounded-md bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white text-xs font-semibold transition-all shadow">
                                     Sign Up
                                 </button>
                             </Link>
@@ -196,87 +205,98 @@ const Header: React.FC<HeaderProps> = ({
                     )}
                 </div>
             </div>
+            
+            {/* Crypto Filter Bar - Height: 40px - Only shown for crypto category */}
+            {showControls && selectedCategory === 'crypto' && (
+                <div className="flex items-center justify-center gap-4 px-3 h-10 bg-gray-800/40 border-t border-gray-700/30">
+                    {/* Market Status */}
+                    <div className="flex items-center gap-1.5 text-xs text-gray-400">
+                        <span className="flex items-center gap-1 text-green-400 font-medium">
+                            <div className="w-1.5 h-1.5 bg-green-400 rounded-full animate-pulse"></div>
+                            Live
+                        </span>
+                    </div>
+                    
+                    <div className="w-px h-5 bg-gray-700/50" />
 
-            {/* Sub-bar for info and controls */}
-            {showControls && (
-                <div className="px-6 pb-4">
-                    <div className="flex items-center justify-between bg-gray-800/30 backdrop-blur-sm rounded-xl p-4 border border-gray-700/30">
-                        <div className="flex items-center gap-6">
-                            <div className="text-sm">
-                                <span className="text-gray-400">Market Status:</span>
-                                <span className="text-green-400 font-semibold ml-2 flex items-center gap-1">
-                                    <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
-                                    Live
-                                </span>
-                            </div>
-                            {selectedCategory === 'crypto' && (
-                                <div className="flex items-center gap-x-6 gap-y-4 text-sm text-gray-300">
-                                    <div className="flex items-center gap-3">
-                                        <label htmlFor="timeframe-select" className="font-semibold text-gray-400">Timeframe:</label>
-                                        <select
-                                            id="timeframe-select"
-                                            value={timeframe}
-                                            onChange={(e) => onTimeframeChange?.(e.target.value)}
-                                            className="bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all appearance-none"
-                                            style={{ backgroundImage: `url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e")`, backgroundPosition: 'right 0.5rem center', backgroundRepeat: 'no-repeat', backgroundSize: '1.5em 1.5em' }}
-                                        >
-                                            <option value="1h">1 Hour</option>
-                                            <option value="24h">24 Hours</option>
-                                            <option value="7d">7 Days</option>
-                                            <option value="30d">30 Days</option>
-                                        </select>
-                                    </div>
+                    {/* Timeframe */}
+                    <div className="flex items-center gap-1.5">
+                        <label className="text-xs text-gray-500">Timeframe:</label>
+                        <select
+                            value={timeframe}
+                            onChange={(e) => onTimeframeChange?.(e.target.value)}
+                            className={selectClassName}
+                            style={selectStyle}
+                        >
+                            <option value="1h">1 Hour</option>
+                            <option value="24h">24 Hours</option>
+                            <option value="7d">7 Days</option>
+                            <option value="30d">30 Days</option>
+                        </select>
+                    </div>
 
-                                    <div className="flex items-center gap-3">
-                                        <label htmlFor="marketcap-select" className="font-semibold text-gray-400">Market Cap:</label>
-                                        <select
-                                            id="marketcap-select"
-                                            value={marketCapGroup}
-                                            onChange={(e) => onMarketCapGroupChange?.(Number(e.target.value))}
-                                            className="bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all appearance-none"
-                                            style={{ backgroundImage: `url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e")`, backgroundPosition: 'right 0.5rem center', backgroundRepeat: 'no-repeat', backgroundSize: '1.5em 1.5em' }}
-                                        >
-                                            {[1, 2, 3, 4, 5].map(page => (
-                                                <option key={page} value={page}>
-                                                    Top #{(page - 1) * 100 + 1} - #{page * 100}
-                                                </option>
-                                            ))}
-                                        </select>
-                                    </div>
+                    <div className="w-px h-5 bg-gray-700/50" />
 
-                                    <div className="flex items-center gap-3">
-                                        <label htmlFor="sizeby-select" className="font-semibold text-gray-400">Size by:</label>
-                                        <select
-                                            id="sizeby-select"
-                                            value={sizeBy}
-                                            onChange={(e) => onSizeByChange?.(e.target.value as 'marketCap' | 'volume24h')}
-                                            className="bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all appearance-none"
-                                            style={{ backgroundImage: `url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e")`, backgroundPosition: 'right 0.5rem center', backgroundRepeat: 'no-repeat', backgroundSize: '1.5em 1.5em' }}
-                                        >
-                                            <option value="marketCap">Market Cap</option>
-                                            <option value="volume24h">Volume (24h)</option>
-                                        </select>
-                                    </div>
-                                </div>
-                            )}
-                            {selectedCategory === 'forex' && (
-                                <div className="text-sm">
-                                    <span className="text-gray-400">Major Pairs:</span>
-                                    <span className="text-blue-400 font-semibold ml-2">Active</span>
-                                </div>
-                            )}
-                        </div>
+                    {/* Market Cap Group */}
+                    <div className="flex items-center gap-1.5">
+                        <label className="text-xs text-gray-500">Market Cap:</label>
+                        <select
+                            value={marketCapGroup}
+                            onChange={(e) => onMarketCapGroupChange?.(Number(e.target.value))}
+                            className={selectClassName}
+                            style={selectStyle}
+                        >
+                            {[1, 2, 3, 4, 5].map(page => (
+                                <option key={page} value={page}>
+                                    Top #{(page - 1) * 100 + 1} - #{page * 100}
+                                </option>
+                            ))}
+                        </select>
+                    </div>
 
-                        <div className="flex items-center gap-2">
-                            <span className="text-gray-400">Updated Time:</span>
-                            <span className="text-white font-semibold ml-2">
-                                {time}
-                            </span>
-                        </div>
+                    <div className="w-px h-5 bg-gray-700/50" />
+
+                    {/* Size By */}
+                    <div className="flex items-center gap-1.5">
+                        <label className="text-xs text-gray-500">Size by:</label>
+                        <select
+                            value={sizeBy}
+                            onChange={(e) => onSizeByChange?.(e.target.value as 'marketCap' | 'volume24h')}
+                            className={selectClassName}
+                            style={selectStyle}
+                        >
+                            <option value="marketCap">Market Cap</option>
+                            <option value="volume24h">Volume (24h)</option>
+                        </select>
+                    </div>
+
+                    <div className="w-px h-5 bg-gray-700/50" />
+
+                    {/* Scale Mode */}
+                    <div className="flex items-center gap-1.5">
+                        <label className="text-xs text-gray-500">Scale:</label>
+                        <select
+                            value={scaleMode}
+                            onChange={(e) => onScaleModeChange?.(e.target.value as 'realistic' | 'balanced')}
+                            className={selectClassName}
+                            style={selectStyle}
+                            title="Balanced: Log scale. Realistic: Power scale."
+                        >
+                            <option value="balanced">Balanced</option>
+                            <option value="realistic">Realistic</option>
+                        </select>
+                    </div>
+                    
+                    <div className="w-px h-5 bg-gray-700/50" />
+                    
+                    {/* Updated Time */}
+                    <div className="flex items-center gap-1.5 text-xs">
+                        <span className="text-gray-500">Updated:</span>
+                        <span className="text-white font-medium tabular-nums">{time}</span>
                     </div>
                 </div>
             )}
-        </div>
+        </header>
     );
 };
 
