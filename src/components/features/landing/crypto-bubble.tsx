@@ -236,9 +236,9 @@ const fetchRealForexData = async (): Promise<CryptoCoin[]> => {
                 symbol: currency.symbol,
                 name: currency.name,
                 change24h: parseFloat(change.toFixed(2)),
-                marketCap: rate * currency.importance * 10000000,
+                marketCap: rate * currency.importance * 15000000, // Increased multiplier
                 price: rate,
-                volume24h: currency.importance * 50000000,
+                volume24h: currency.importance * currency.importance * 800000, // Squared importance for more variance
                 currentRate: rate,
                 countryCode: currency.country,
                 category: currency.importance >= 70 ? "major" : currency.importance >= 40 ? "minor" : "exotic",
@@ -313,16 +313,41 @@ const fetchRealForexPairsData = async (): Promise<CryptoCoin[]> => {
                     pairRate = baseRate / quoteRate;
                 }
                 const change = (Math.random() * 2 - 1);
-                const volume = Math.floor(Math.random() * 100) + 1;
+
+                // Realistic forex pair volumes based on actual market data
+                let volume: number;
+                const pairSymbol = `${pair.base}/${pair.quote}`;
+
+                // Major pairs (highest volume)
+                if (['EUR/USD', 'USD/EUR', 'USD/JPY', 'JPY/USD', 'GBP/USD', 'USD/GBP', 'USD/CHF', 'CHF/USD'].includes(pairSymbol)) {
+                    volume = 800 + Math.floor(Math.random() * 400); // 800-1200
+                }
+                // Cross majors (medium-high volume)
+                else if (['EUR/GBP', 'GBP/EUR', 'EUR/JPY', 'JPY/EUR', 'GBP/JPY', 'JPY/GBP', 'AUD/USD', 'USD/AUD', 'CAD/USD', 'USD/CAD'].includes(pairSymbol)) {
+                    volume = 400 + Math.floor(Math.random() * 300); // 400-700
+                }
+                // Minor pairs (medium volume)
+                else if (pair.base === 'USD' || pair.quote === 'USD') {
+                    const importance = Math.max(currencyDetails[pair.base]?.importance || 0, currencyDetails[pair.quote]?.importance || 0);
+                    volume = Math.floor(importance * 3) + Math.floor(Math.random() * 100); // Based on currency importance
+                }
+                // Exotic pairs (lower volume)
+                else {
+                    const baseImportance = currencyDetails[pair.base]?.importance || 20;
+                    const quoteImportance = currencyDetails[pair.quote]?.importance || 20;
+                    const avgImportance = (baseImportance + quoteImportance) / 2;
+                    volume = Math.floor(avgImportance * 1.5) + Math.floor(Math.random() * 50); // 30-120 range for exotics
+                }
+
                 const spread = pairRate * 0.0001;
                 pairData.push({
                     id: `${pair.base}${pair.quote}-pair`.toLowerCase(),
                     symbol: `${pair.base}${pair.quote}`,
                     name: `${pair.base}/${pair.quote}`,
                     change24h: parseFloat(change.toFixed(2)),
-                    marketCap: pairRate * volume * 10000000,
+                    marketCap: pairRate * volume * 15000000, // Increased multiplier for better variance
                     price: pairRate,
-                    volume24h: volume * 80000000,
+                    volume24h: volume * 120000000, // Increased base volume
                     currentRate: pairRate,
                     bid: pairRate - spread / 2,
                     ask: pairRate + spread / 2,
@@ -345,12 +370,12 @@ const fetchRealForexPairsData = async (): Promise<CryptoCoin[]> => {
 const fetchRealStockData = async (): Promise<CryptoCoin[]> => {
     try {
         const stockData = await fetchStockData(30);
-        
+
         if (!stockData || stockData.length === 0) {
             console.error('No stock data received');
             return [];
         }
-        
+
         return stockData.map((stock): CryptoCoin => ({
             id: stock.id,
             symbol: stock.symbol,
@@ -462,7 +487,7 @@ const HistoricalChart: React.FC<{ data: { time: number; price: number }[] }> = (
         };
         const yAxis = (g: d3.Selection<SVGGElement, unknown, null, undefined>) => {
             g.attr("transform", `translate(${margin.left},0)`)
-                .call(d3.axisLeft(y).ticks(4).tickFormat(d => `$${Number(d).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`).tickSize(0).tickPadding(10));
+                .call(d3.axisLeft(y).ticks(4).tickFormat(d => `$${Number(d).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`).tickSize(0).tickPadding(10));
             g.select(".domain").remove();
             g.selectAll("line").remove();
             g.selectAll("text").style("fill", "#9ca3af").style("font-size", "10px");
@@ -514,7 +539,7 @@ const HistoricalChart: React.FC<{ data: { time: number; price: number }[] }> = (
                 const posY = y(d.price);
                 tooltipLine.attr("x1", posX).attr("x2", posX);
                 tooltipCircle.attr("cx", posX).attr("cy", posY);
-                tooltipTextPrice.text(`$${d.price.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`);
+                tooltipTextPrice.text(`$${d.price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`);
                 tooltipTextDate.text(d3.timeFormat("%b %d, %Y")(new Date(d.time)));
                 const priceNode = tooltipTextPrice.node();
                 const dateNode = tooltipTextDate.node();
@@ -627,10 +652,10 @@ const CryptoBubblesUI: React.FC = () => {
         }, 30000);
         return () => clearInterval(interval);
     }, [searchTerm, selectedCategory, marketCapGroup]);
-    
+
     // Header height: 56px main + 40px filter bar for crypto
     const HEADER_HEIGHT = selectedCategory === 'crypto' ? 96 : 56;
-    
+
     useEffect(() => {
         const handleResize = () => {
             // Use full viewport width and height minus header
@@ -651,23 +676,74 @@ const CryptoBubblesUI: React.FC = () => {
         const { width, height } = dimensions;
         const centerX = width / 2;
         const centerY = height / 2;
-        
+
         // ============================================
-        // RADIUS CALCULATION (with configurable modes)
+        // INTELLIGENT BUBBLE CAPACITY CALCULATION
         // ============================================
+        const calculateOptimalBubbleCount = (screenWidth: number, screenHeight: number, data: CryptoCoin[]) => {
+            // Calculate theoretical bubble sizes first
+            const sizeMetric = sizeBy === 'volume24h' ? 'volume24h' : 'marketCap';
+            const maxValue = d3.max(data, (d) => d[sizeMetric as keyof CryptoCoin] as number) ?? 1;
+            const minValue = d3.min(data, (d) => d[sizeMetric as keyof CryptoCoin] as number) ?? 0;
+
+            const MIN_RADIUS = 25;
+            const MAX_RADIUS_PERCENT = scaleMode === 'realistic' ? 0.16 : 0.14;
+            const maxRadius = Math.min(screenWidth, screenHeight) * MAX_RADIUS_PERCENT;
+
+            // Calculate average bubble radius for capacity estimation
+            const avgRadius = (MIN_RADIUS + maxRadius) / 2;
+            const bubblePadding = 10; // Reduced minimum space between bubbles
+            const effectiveRadius = avgRadius + bubblePadding;
+
+            // Calculate usable area (95% to use more screen space)
+            const usableArea = (screenWidth * 0.95) * (screenHeight * 0.95);
+
+            // Circle packing efficiency (increased to 70% for better packing)
+            const packingEfficiency = 0.70;
+
+            // Calculate theoretical capacity
+            const bubbleArea = Math.PI * effectiveRadius * effectiveRadius;
+            const theoreticalCapacity = Math.floor((usableArea * packingEfficiency) / bubbleArea);
+
+            // Apply safety factor to ensure no overlapping (85% of theoretical - increased)
+            const safeCapacity = Math.floor(theoreticalCapacity * 0.85);
+
+            // Set reasonable bounds based on screen size
+            const minBubbles = Math.min(20, data.length);
+            const maxBubbles = Math.min(150, data.length);
+
+            return Math.max(minBubbles, Math.min(maxBubbles, safeCapacity));
+        };
+
+        // Calculate optimal bubble count and filter data
+        const optimalCount = calculateOptimalBubbleCount(width, height, marketData);
+        console.log(`Screen: ${width}x${height}, Total bubbles: ${marketData.length}, Displayed: ${optimalCount}`);
+
+        // Filter to show only the most important/largest bubbles
         const sizeMetric = sizeBy === 'volume24h' ? 'volume24h' : 'marketCap';
-        const maxValue = d3.max(marketData, (d) => d[sizeMetric as keyof CryptoCoin] as number) ?? 1;
-        const minValue = d3.min(marketData, (d) => d[sizeMetric as keyof CryptoCoin] as number) ?? 0;
-        
-        const MIN_RADIUS = 28;
-        const MAX_RADIUS_PERCENT = scaleMode === 'realistic' ? 0.18 : 0.15;
+        const filteredMarketData = [...marketData]
+            .sort((a, b) => {
+                const aVal = (a[sizeMetric as keyof CryptoCoin] as number) ?? 0;
+                const bVal = (b[sizeMetric as keyof CryptoCoin] as number) ?? 0;
+                return bVal - aVal;
+            })
+            .slice(0, optimalCount);
+
+        // ============================================
+        // RADIUS CALCULATION (with filtered data)
+        // ============================================
+        const maxValue = d3.max(filteredMarketData, (d) => d[sizeMetric as keyof CryptoCoin] as number) ?? 1;
+        const minValue = d3.min(filteredMarketData, (d) => d[sizeMetric as keyof CryptoCoin] as number) ?? 0;
+
+        const MIN_RADIUS = 25; // Slightly smaller minimum for more variance
+        const MAX_RADIUS_PERCENT = scaleMode === 'realistic' ? 0.16 : 0.14; // Reduced max to prevent cramming
         const maxRadius = Math.min(width, height) * MAX_RADIUS_PERCENT;
-        
+
         const createRadiusScale = () => {
             if (scaleMode === 'balanced') {
                 const logMin = Math.log10(Math.max(minValue, 1));
                 const logMax = Math.log10(Math.max(maxValue, 1));
-                
+
                 return (value: number) => {
                     const safeValue = Math.max(value, 1);
                     const logValue = Math.log10(safeValue);
@@ -683,27 +759,27 @@ const CryptoBubblesUI: React.FC = () => {
                 return (value: number) => powerScale(value);
             }
         };
-        
+
         const radiusScale = createRadiusScale();
-        
+
         // ============================================
         // PREPARE BUBBLE DATA WITH POSITION PERSISTENCE
         // ============================================
         const prevData = prevBubbleDataRef.current;
         const isInitialRender = prevData.size === 0;
-        
+
         // Sort by size (largest first) for better packing
-        const sortedMarketData = [...marketData].sort((a, b) => {
+        const sortedMarketData = [...filteredMarketData].sort((a, b) => {
             const aVal = (a[sizeMetric as keyof CryptoCoin] as number) ?? 0;
             const bVal = (b[sizeMetric as keyof CryptoCoin] as number) ?? 0;
             return bVal - aVal;
         });
-        
+
         const bubbleData: CryptoCoin[] = sortedMarketData.map((d, index) => {
             const metricValue = (d[sizeMetric as keyof CryptoCoin] as number) ?? 0;
             const newRadius = radiusScale(metricValue);
             const prevBubble = prevData.get(d.id);
-            
+
             // Preserve position from previous render, or generate new position
             let x: number, y: number;
             if (prevBubble) {
@@ -714,24 +790,24 @@ const CryptoBubblesUI: React.FC = () => {
                 // This is mathematically optimal for packing circles
                 const goldenAngle = Math.PI * (3 - Math.sqrt(5)); // ~137.5 degrees
                 const angle = index * goldenAngle;
-                
+
                 // Scale radius based on index with some randomization for natural look
                 // Larger indices = further from center
                 const scaleFactor = Math.sqrt(index + 1) / Math.sqrt(sortedMarketData.length + 1);
-                const maxSpawnRadius = Math.min(width, height) * 0.42; // Use more of the canvas
+                const maxSpawnRadius = Math.min(width, height) * 0.15; // Very tight spawn area
                 const spawnDist = scaleFactor * maxSpawnRadius;
-                
+
                 // Add small random offset for more natural appearance
-                const randomOffset = newRadius * 0.3;
+                const randomOffset = newRadius * 0.2; // Reduced randomness
                 x = centerX + Math.cos(angle) * spawnDist + (Math.random() - 0.5) * randomOffset;
                 y = centerY + Math.sin(angle) * spawnDist + (Math.random() - 0.5) * randomOffset;
-                
-                // Ensure initial position is within bounds
-                const padding = newRadius + 10;
+
+                // Ensure initial position is well within bounds
+                const padding = newRadius + 20;
                 x = Math.max(padding, Math.min(width - padding, x));
                 y = Math.max(padding, Math.min(height - padding, y));
             }
-            
+
             return {
                 ...d,
                 radius: newRadius,
@@ -743,90 +819,99 @@ const CryptoBubblesUI: React.FC = () => {
                 fy: null,
             };
         });
-        
+
         // Update ref for next render
         const newDataMap = new Map<string, CryptoCoin>();
         bubbleData.forEach(d => newDataMap.set(d.id, d));
         prevBubbleDataRef.current = newDataMap;
-        
+
         // ============================================
         // D3 FORCE SIMULATION - CryptoBubbles Style
         // ============================================
-        
+
         // Stop previous simulation
         if (simulationRef.current) {
             simulationRef.current.stop();
         }
-        
-        // Dynamic collision padding based on number of bubbles
-        const collisionPadding = bubbleData.length > 50 ? 8 : 12;
-        
+
+        // Adaptive collision detection based on actual bubble density
+        const bubbleDensity = bubbleData.length / ((width * height) / 10000);
+        const avgRadius = bubbleData.reduce((sum, d) => sum + (d.radius ?? 30), 0) / bubbleData.length;
+
+        // Minimal padding to fit maximum bubbles
+        const basePadding = avgRadius * 0.2; // Further reduced
+        const densityPadding = bubbleDensity * 1.0; // Further reduced
+        const collisionPadding = Math.max(5, basePadding + densityPadding); // Minimum reduced to 5
+
+        console.log(`Bubble density: ${bubbleDensity.toFixed(2)}, Collision padding: ${collisionPadding.toFixed(1)}`);
+        console.log(`Bubbles created: ${bubbleData.length}, Original data: ${marketData.length}`);
+
         const simulation = d3
             .forceSimulation<CryptoCoin>(bubbleData)
-            // Collision detection - strongest setting with generous padding
+            // Moderate collision detection
             .force("collision", d3.forceCollide<CryptoCoin>()
-                .radius((d) => (d.radius ?? 30) + collisionPadding)  // Extra padding for spacing
-                .strength(1)  // Maximum strength - no overlap allowed
-                .iterations(12)  // High iterations for perfect collision resolution
+                .radius((d) => (d.radius ?? 30) + collisionPadding)
+                .strength(1.0)  // Standard strength
+                .iterations(15)  // Sufficient iterations
             )
-            // Many-body repulsion - creates natural spacing between all bubbles
+            // Balanced repulsion
             .force("charge", d3.forceManyBody<CryptoCoin>()
-                .strength((d) => -((d.radius ?? 30) * 2.5))  // Strong repulsion
-                .distanceMin(15)  // Minimum distance before force applies
-                .distanceMax(Math.min(width, height) * 0.5)  // Limit range for performance
+                .strength((d) => -((d.radius ?? 30) * 3))  // Reduced from 6
+                .distanceMin(15)  // Moderate minimum distance
+                .distanceMax(Math.min(width, height) * 0.6)  // Contained range
             )
-            // Center gravity - gentle pull to keep bubbles visible
-            .force("center", d3.forceCenter(centerX, centerY).strength(0.012))
-            // Size-based gravity: larger bubbles gravitate to center (CryptoBubbles style)
-            .force("sizeGravity", sizeGravityForce(centerX, centerY, 0.006))
-            // Organic floating motion for lively feel
-            .force("float", organicFloatForce(0.012))
-            // Soft elastic boundaries - no bubbles cut off
-            .force("boundary", softBoundaryForce(width, height, 20, 0.15));
-        
-        // CryptoBubbles-style physics parameters
+            // Gentle center gravity
+            .force("center", d3.forceCenter(centerX, centerY).strength(0.02)) // Increased to keep bubbles centered
+            // Minimal size-based gravity
+            .force("sizeGravity", sizeGravityForce(centerX, centerY, 0.002))
+            // Light floating motion
+            .force("float", organicFloatForce(0.005))
+            // Strong boundary containment
+            .force("boundary", softBoundaryForce(width, height, 10, 1.5));
+
+        // Balanced physics parameters for visibility
         simulation
-            .alphaDecay(0.006)      // Very slow decay for smooth continuous motion
-            .velocityDecay(0.4)     // Higher damping for smoother, less jittery movement
-            .alphaMin(0.0005)       // Keep simulation alive for gentle floating
-            .alpha(isInitialRender ? 1 : 0.4);  // Higher alpha on initial load
-        
-        // Warm up simulation on initial render to fully resolve collisions
+            .alphaDecay(0.008)      // Faster settling
+            .velocityDecay(0.6)     // More damping to prevent bubbles flying off
+            .alphaMin(0.002)        // Higher minimum to maintain gentle motion
+            .alpha(isInitialRender ? 1.0 : 0.3);  // Moderate initial energy
+
+        // Moderate warm-up simulation to establish positions
         if (isInitialRender) {
-            // Run more ticks with higher alpha to ensure complete separation
-            simulation.alpha(1);
-            for (let i = 0; i < 200; i++) {
+            // Run fewer ticks to prevent over-separation
+            simulation.alpha(1.0);
+            for (let i = 0; i < 100; i++) {
                 simulation.tick();
             }
-            // Let it settle a bit more with lower alpha
-            simulation.alpha(0.3);
-            for (let i = 0; i < 50; i++) {
+            // Quick settle
+            simulation.alpha(0.2);
+            for (let i = 0; i < 25; i++) {
                 simulation.tick();
             }
         }
-        
+
         simulationRef.current = simulation;
-        
+
         // ============================================
         // SVG SETUP & FILTERS
         // ============================================
-        
+
         // ============================================
         // ZOOM & PAN BEHAVIOR
         // ============================================
         let zoomGroup = svg.select<SVGGElement>(".zoom-group");
         if (zoomGroup.empty()) {
             zoomGroup = svg.append("g").attr("class", "zoom-group");
-            
+
             const zoom = d3.zoom<SVGSVGElement, unknown>()
                 .scaleExtent([0.5, 3])  // Min 50% zoom, max 300% zoom
                 .translateExtent([[-width * 0.5, -height * 0.5], [width * 1.5, height * 1.5]])
                 .on("zoom", (event) => {
                     zoomGroup.attr("transform", event.transform);
                 });
-            
+
             svg.call(zoom);
-            
+
             // Double-click to reset zoom
             svg.on("dblclick.zoom", () => {
                 svg.transition()
@@ -834,12 +919,12 @@ const CryptoBubblesUI: React.FC = () => {
                     .call(zoom.transform, d3.zoomIdentity);
             });
         }
-        
+
         // Use data join pattern for smooth updates
         let defs = zoomGroup.select<SVGDefsElement>("defs");
         if (defs.empty()) {
             defs = zoomGroup.append("defs");
-            
+
             // Enhanced glow filters
             const addEnhancedGlow = (id: string, color: string, intensity: number = 0.9) => {
                 const f = defs.append("filter")
@@ -848,47 +933,47 @@ const CryptoBubblesUI: React.FC = () => {
                     .attr("y", "-100%")
                     .attr("width", "300%")
                     .attr("height", "300%");
-                
+
                 // Multiple blur layers for rich glow
                 f.append("feGaussianBlur")
                     .attr("in", "SourceGraphic")
                     .attr("stdDeviation", "3")
                     .attr("result", "blur1");
-                
+
                 f.append("feGaussianBlur")
                     .attr("in", "SourceGraphic")
                     .attr("stdDeviation", "6")
                     .attr("result", "blur2");
-                
+
                 f.append("feFlood")
                     .attr("flood-color", color)
                     .attr("flood-opacity", intensity)
                     .attr("result", "color");
-                
+
                 f.append("feComposite")
                     .attr("in", "color")
                     .attr("in2", "blur2")
                     .attr("operator", "in")
                     .attr("result", "glow");
-                
+
                 const merge = f.append("feMerge");
                 merge.append("feMergeNode").attr("in", "glow");
                 merge.append("feMergeNode").attr("in", "SourceGraphic");
             };
-            
+
             addEnhancedGlow("neon-green-glow", "#22c55e", 0.85);
             addEnhancedGlow("neon-red-glow", "#ef4444", 0.85);
             addEnhancedGlow("neon-neutral-glow", "#6b7280", 0.5);
         }
-        
+
         // ============================================
         // BUBBLE RENDERING WITH DATA JOIN
         // ============================================
-        
+
         const bubbleGroups = zoomGroup
             .selectAll<SVGGElement, CryptoCoin>(".bubble-group")
             .data(bubbleData, (d) => d.id);
-        
+
         // EXIT: Remove old bubbles with fade out
         bubbleGroups.exit<CryptoCoin>()
             .transition()
@@ -897,7 +982,7 @@ const CryptoBubblesUI: React.FC = () => {
             .style("opacity", 0)
             .attr("transform", (d) => `translate(${d.x || 0}, ${d.y || 0}) scale(0.5)`)
             .remove();
-        
+
         // ENTER: Create new bubbles
         const enterGroups = bubbleGroups.enter()
             .append("g")
@@ -905,31 +990,31 @@ const CryptoBubblesUI: React.FC = () => {
             .style("cursor", "grab")
             .style("opacity", 0)
             .attr("transform", (d) => `translate(${d.x || centerX}, ${d.y || centerY}) scale(0)`);
-        
+
         // Core circle (main bubble)
         enterGroups.append("circle")
             .attr("class", "bubble-core")
             .attr("r", 0)
             .attr("fill", "rgba(0, 0, 0, 0.35)");
-        
+
         // Rim circle (outer glow ring)
         enterGroups.append("circle")
             .attr("class", "bubble-rim")
             .attr("r", 0)
             .attr("fill", "none");
-        
+
         // ENTER animation: bubbles expand into place
         enterGroups
             .transition()
             .duration(isInitialRender ? 800 : 500)
             .delay((_, i) => isInitialRender ? i * 15 : i * 8)
             .ease(d3.easeBackOut.overshoot(1.1))
-            .style("opacity", 1)
+            .style("opacity", 0.7) // Reduced opacity for main bubble
             .attr("transform", (d) => `translate(${d.x || centerX}, ${d.y || centerY}) scale(1)`);
-        
+
         // Merge enter + update selections
         const allGroups = enterGroups.merge(bubbleGroups);
-        
+
         // UPDATE: Animate radius, stroke, and color changes
         allGroups.select<SVGCircleElement>(".bubble-core")
             .transition()
@@ -942,7 +1027,7 @@ const CryptoBubblesUI: React.FC = () => {
                 const change = getChangeForTimeframe(d, timeframe);
                 return change > 0 ? "url(#neon-green-glow)" : change < 0 ? "url(#neon-red-glow)" : "url(#neon-neutral-glow)";
             });
-        
+
         allGroups.select<SVGCircleElement>(".bubble-rim")
             .transition()
             .duration(600)
@@ -954,26 +1039,26 @@ const CryptoBubblesUI: React.FC = () => {
                 return `${baseColor}99`;
             })
             .attr("stroke-width", 3)
-            .style("opacity", 0.9);
-        
+            .style("opacity", 0.65); // More transparent for better layering
+
         // ============================================
         // BUBBLE CONTENT (logos, text, etc.)
         // ============================================
-        
+
         // Remove old content and re-add (simpler than complex data joins for nested content)
         allGroups.selectAll(".bubble-content").remove();
-        
+
         allGroups.each(function (d) {
             const group = d3.select<SVGGElement, CryptoCoin>(this);
             const r = d.radius ?? 30;
-            
+
             const contentGroup = group.append("g").attr("class", "bubble-content");
-            
+
             // Logo/flags
             if (selectedCategory === 'forex-pair' && d.baseCountryCode && d.quoteCountryCode) {
                 const flagSize = Math.min(r * 0.5, 32);
                 const yPos = -r * 0.4;
-                
+
                 const baseFlagGroup = contentGroup.append("g")
                     .attr("transform", `translate(${-flagSize * 0.6}, ${yPos})`);
                 const clipIdBase = `clip-base-${d.id}`;
@@ -989,7 +1074,7 @@ const CryptoBubblesUI: React.FC = () => {
                     .attr("y", -flagSize / 2)
                     .attr("clip-path", `url(#${clipIdBase})`)
                     .style("pointer-events", "none");
-                
+
                 const quoteFlagGroup = contentGroup.append("g")
                     .attr("transform", `translate(${flagSize * 0.6}, ${yPos})`);
                 const clipIdQuote = `clip-quote-${d.id}`;
@@ -1023,7 +1108,7 @@ const CryptoBubblesUI: React.FC = () => {
                     .attr("clip-path", `url(#${clipId})`)
                     .style("pointer-events", "none");
             }
-            
+
             // Symbol text
             contentGroup.append("text")
                 .attr("class", "symbol-text")
@@ -1043,7 +1128,7 @@ const CryptoBubblesUI: React.FC = () => {
                     }
                     return d.symbol;
                 });
-            
+
             // Rate text for forex
             if (selectedCategory === 'forex' || selectedCategory === 'forex-pair') {
                 contentGroup.append("text")
@@ -1065,7 +1150,7 @@ const CryptoBubblesUI: React.FC = () => {
                         return "";
                     });
             }
-            
+
             // Change percentage text
             contentGroup.append("text")
                 .attr("class", "change-text")
@@ -1081,11 +1166,11 @@ const CryptoBubblesUI: React.FC = () => {
                     return `${change > 0 ? "+" : ""}${change.toFixed(2)}%`;
                 });
         });
-        
+
         // ============================================
         // DRAG BEHAVIOR
         // ============================================
-        
+
         const drag = d3
             .drag<SVGGElement, CryptoCoin>()
             .on("start", function (event, d) {
@@ -1115,36 +1200,36 @@ const CryptoBubblesUI: React.FC = () => {
                     .ease(d3.easeCubicOut)
                     .attr("transform", `translate(${d.x || 0}, ${d.y || 0}) scale(1)`);
             });
-        
+
         allGroups.call(drag);
-        
+
         // ============================================
         // HOVER EFFECTS - CryptoBubbles Style
         // ============================================
-        
+
         allGroups
             .on("mouseenter", function (_event, d) {
                 const group = d3.select(this);
                 const change = getChangeForTimeframe(d, timeframe);
                 const glowFilter = change > 0 ? "url(#neon-green-glow)" : change < 0 ? "url(#neon-red-glow)" : "url(#neon-neutral-glow)";
-                
+
                 // Scale up entire bubble
                 group.transition()
                     .duration(200)
                     .ease(d3.easeCubicOut)
                     .attr("transform", `translate(${d.x || 0}, ${d.y || 0}) scale(1.08)`);
-                
+
                 // Enhance glow
                 group.select(".bubble-core")
                     .transition().duration(200)
                     .attr("stroke-width", 4)
                     .style("filter", glowFilter);
-                
+
                 group.select(".bubble-rim")
                     .transition().duration(200)
                     .style("opacity", 1)
                     .attr("stroke-width", 4);
-                
+
                 // Text glow
                 group.selectAll("text")
                     .transition().duration(200)
@@ -1154,23 +1239,23 @@ const CryptoBubblesUI: React.FC = () => {
                 const group = d3.select(this);
                 const change = getChangeForTimeframe(d, timeframe);
                 const glowFilter = change > 0 ? "url(#neon-green-glow)" : change < 0 ? "url(#neon-red-glow)" : "url(#neon-neutral-glow)";
-                
+
                 // Scale back
                 group.transition()
                     .duration(300)
                     .ease(d3.easeCubicOut)
                     .attr("transform", `translate(${d.x || 0}, ${d.y || 0}) scale(1)`);
-                
+
                 group.select(".bubble-core")
                     .transition().duration(300)
                     .attr("stroke-width", 3)
                     .style("filter", glowFilter);
-                
+
                 group.select(".bubble-rim")
                     .transition().duration(300)
                     .style("opacity", 0.9)
                     .attr("stroke-width", 3);
-                
+
                 group.selectAll("text")
                     .transition().duration(300)
                     .style("filter", "none");
@@ -1181,7 +1266,7 @@ const CryptoBubblesUI: React.FC = () => {
                 const radius = d.radius ?? 30;
                 const change = getChangeForTimeframe(d, timeframe);
                 const strokeColor = getMarketColor(change);
-                
+
                 // Ripple effect
                 const clickRipple = group.append("circle")
                     .attr("r", radius)
@@ -1189,7 +1274,7 @@ const CryptoBubblesUI: React.FC = () => {
                     .attr("stroke", strokeColor)
                     .attr("stroke-width", 4)
                     .style("opacity", 0.8);
-                
+
                 clickRipple
                     .transition()
                     .duration(600)
@@ -1198,7 +1283,7 @@ const CryptoBubblesUI: React.FC = () => {
                     .style("opacity", 0)
                     .style("stroke-width", 1)
                     .remove();
-                
+
                 // Pulse effect
                 group.transition()
                     .duration(100)
@@ -1207,11 +1292,11 @@ const CryptoBubblesUI: React.FC = () => {
                     .duration(200)
                     .attr("transform", `translate(${d.x || 0}, ${d.y || 0}) scale(1.05)`);
             });
-        
+
         // ============================================
         // SIMULATION TICK - Smooth Transform Updates
         // ============================================
-        
+
         simulation.on("tick", () => {
             allGroups.attr("transform", (d) => {
                 // Clamp positions to viewport
@@ -1221,14 +1306,14 @@ const CryptoBubblesUI: React.FC = () => {
                 return `translate(${d.x}, ${d.y})`;
             });
         });
-        
+
         // Keep simulation gently running for organic feel
         const keepAliveInterval = setInterval(() => {
             if (simulation.alpha() < 0.01) {
                 simulation.alpha(0.02).restart();
             }
         }, 5000);
-        
+
         return () => {
             clearInterval(keepAliveInterval);
             if (simulation) simulation.stop();
@@ -1269,38 +1354,38 @@ const CryptoBubblesUI: React.FC = () => {
     function organicFloatForce(strength = 0.02) {
         let nodes: CryptoCoin[];
         const startTime = Date.now();
-        
+
         function force(alpha: number) {
             const elapsed = (Date.now() - startTime) * 0.001;
-            
+
             nodes.forEach((d, i) => {
                 if (d.fx != null || d.fy != null) return; // Skip pinned nodes
-                
+
                 // Each bubble gets unique phase offsets for natural variation
                 const phaseX = i * 0.7 + (d.radius ?? 30) * 0.01;
                 const phaseY = i * 0.5 + (d.radius ?? 30) * 0.02;
-                
+
                 // Multiple overlapping sine waves create organic, non-repetitive motion
                 const dx = (
                     Math.sin(elapsed * 0.15 + phaseX) * 0.4 +
                     Math.sin(elapsed * 0.08 + phaseX * 1.3) * 0.3 +
                     Math.sin(elapsed * 0.25 + phaseX * 0.7) * 0.2
                 ) * strength;
-                
+
                 const dy = (
                     Math.cos(elapsed * 0.12 + phaseY) * 0.4 +
                     Math.cos(elapsed * 0.06 + phaseY * 1.5) * 0.3 +
                     Math.sin(elapsed * 0.18 + phaseY * 0.5) * 0.2
                 ) * strength;
-                
+
                 // Scale movement inversely with bubble size (smaller bubbles float more)
                 const sizeScale = Math.max(0.3, 1 - ((d.radius ?? 30) / 150));
-                
+
                 d.vx = (d.vx || 0) + dx * alpha * sizeScale * 8;
                 d.vy = (d.vy || 0) + dy * alpha * sizeScale * 8;
             });
         }
-        
+
         force.initialize = (nds: CryptoCoin[]) => { nodes = nds; };
         return force;
     }
@@ -1312,30 +1397,30 @@ const CryptoBubblesUI: React.FC = () => {
     function sizeGravityForce(centerX: number, centerY: number, strength = 0.01) {
         let nodes: CryptoCoin[];
         let maxRadius = 100;
-        
+
         function force(alpha: number) {
             nodes.forEach(d => {
                 if (d.fx != null || d.fy != null) return;
-                
+
                 const x = d.x ?? centerX;
                 const y = d.y ?? centerY;
                 const r = d.radius ?? 30;
-                
+
                 // Normalized size factor (0 to 1)
                 const sizeFactor = r / maxRadius;
-                
+
                 // Larger bubbles pulled more strongly toward center
                 const pullStrength = sizeFactor * sizeFactor * strength;
-                
+
                 const dx = centerX - x;
                 const dy = centerY - y;
                 const dist = Math.sqrt(dx * dx + dy * dy) || 1;
-                
+
                 d.vx = (d.vx || 0) + (dx / dist) * pullStrength * alpha * 100;
                 d.vy = (d.vy || 0) + (dy / dist) * pullStrength * alpha * 100;
             });
         }
-        
+
         force.initialize = (nds: CryptoCoin[]) => {
             nodes = nds;
             maxRadius = Math.max(...nodes.map(n => n.radius ?? 30), 30);
@@ -1349,19 +1434,19 @@ const CryptoBubblesUI: React.FC = () => {
      */
     function softBoundaryForce(width: number, height: number, padding: number, strength: number) {
         let nodes: CryptoCoin[];
-        
+
         function force(alpha: number) {
             nodes.forEach(d => {
                 if (d.fx != null || d.fy != null) return;
-                
+
                 const r = (d.radius ?? 30) + padding;
                 const x = d.x ?? width / 2;
                 const y = d.y ?? height / 2;
-                
+
                 // Exponential push-back creates elastic bounce feel
                 // The further past the boundary, the stronger the push
                 const pushStrength = strength * alpha * 3;
-                
+
                 if (x < r) {
                     const overlap = r - x;
                     const factor = Math.pow(overlap / r, 0.8) + 0.5; // Exponential with minimum
@@ -1389,13 +1474,14 @@ const CryptoBubblesUI: React.FC = () => {
                 }
             });
         }
-        
+
         force.initialize = (nds: CryptoCoin[]) => { nodes = nds; };
         return force;
     }
 
     // Store previous bubble data for smooth transitions
     const prevBubbleDataRef = useRef<Map<string, CryptoCoin>>(new Map());
+    const bubbleCountRef = useRef({ total: 0, displayed: 0 });
     const handleCategoryChange = (category: string) => {
         setSelectedCategory(category);
         setSelectedBubble(null);
@@ -1427,6 +1513,37 @@ const CryptoBubblesUI: React.FC = () => {
             />
             {/* Bubble Canvas - fills remaining space below header */}
             <div className="relative" style={{ height: `calc(100vh - ${HEADER_HEIGHT}px)` }}>
+                {/* Bubble Count Indicator */}
+                {!loading && !error && marketData.length > 0 && (
+                    <div className="absolute top-4 right-4 z-10 bg-gray-800/80 backdrop-blur-sm rounded-lg px-3 py-1">
+                        <span className="text-xs text-gray-300">
+                            {(() => {
+                                // Calculate the actual displayed count based on the filtered data
+                                const totalCount = marketData.length;
+                                const optimalCount = (() => {
+                                    const sizeMetric = sizeBy === 'volume24h' ? 'volume24h' : 'marketCap';
+                                    const screenArea = dimensions.width * dimensions.height;
+                                    const avgRadius = 40;
+                                    const bubblePadding = 15;
+                                    const effectiveRadius = avgRadius + bubblePadding;
+                                    const usableArea = screenArea * 0.9 * 0.9;
+                                    const packingEfficiency = 0.64;
+                                    const bubbleArea = Math.PI * effectiveRadius * effectiveRadius;
+                                    const theoreticalCapacity = Math.floor((usableArea * packingEfficiency) / bubbleArea);
+                                    const safeCapacity = Math.floor(theoreticalCapacity * 0.75);
+                                    const minBubbles = Math.min(20, totalCount);
+                                    const maxBubbles = Math.min(150, totalCount);
+                                    return Math.max(minBubbles, Math.min(maxBubbles, safeCapacity));
+                                })();
+
+                                return optimalCount < totalCount
+                                    ? `Showing ${optimalCount} of ${totalCount} bubbles • Optimized`
+                                    : `Showing all ${totalCount} bubbles`;
+                            })()
+                            }
+                        </span>
+                    </div>
+                )}
                 {loading && (
                     <div className="absolute inset-0 flex items-center justify-center">
                         <div className="text-center">
@@ -1517,11 +1634,11 @@ const CryptoBubblesUI: React.FC = () => {
                                     {selectedBubble.category && (
                                         <span className={`px-2 py-1 rounded-full text-xs font-semibold border ${selectedBubble.category === 'crypto' ? 'bg-blue-700/20 text-blue-300 border-blue-700/40' :
                                             selectedBubble.category === 'stock' ? 'bg-indigo-700/20 text-indigo-300 border-indigo-700/40' :
-                                            selectedBubble.category === 'major' ? 'bg-green-700/20 text-green-300 border-green-700/40' :
-                                                selectedBubble.category === 'minor' ? 'bg-blue-700/20 text-blue-300 border-blue-700/40' :
-                                                    selectedBubble.category === 'forex-pair' ? 'bg-yellow-700/20 text-yellow-300 border-yellow-700/40' :
-                                                        'bg-purple-700/20 text-purple-300 border-purple-700/40'
-                                        }`}>{selectedBubble.category.toUpperCase()}</span>
+                                                selectedBubble.category === 'major' ? 'bg-green-700/20 text-green-300 border-green-700/40' :
+                                                    selectedBubble.category === 'minor' ? 'bg-blue-700/20 text-blue-300 border-blue-700/40' :
+                                                        selectedBubble.category === 'forex-pair' ? 'bg-yellow-700/20 text-yellow-300 border-yellow-700/40' :
+                                                            'bg-purple-700/20 text-purple-300 border-purple-700/40'
+                                            }`}>{selectedBubble.category.toUpperCase()}</span>
                                     )}
                                 </div>
                                 <div className="text-gray-400 text-sm font-mono">{selectedBubble.symbol}</div>
