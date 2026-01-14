@@ -995,7 +995,7 @@ const CryptoBubblesUI: React.FC = () => {
         enterGroups.append("circle")
             .attr("class", "bubble-core")
             .attr("r", 0)
-            .attr("fill", "rgba(0, 0, 0, 0.35)");
+            .attr("fill", "rgba(0, 0, 0, 0.15)");
 
         // Rim circle (outer glow ring)
         enterGroups.append("circle")
@@ -1009,7 +1009,7 @@ const CryptoBubblesUI: React.FC = () => {
             .duration(isInitialRender ? 800 : 500)
             .delay((_, i) => isInitialRender ? i * 15 : i * 8)
             .ease(d3.easeBackOut.overshoot(1.1))
-            .style("opacity", 0.7) // Reduced opacity for main bubble
+            .style("opacity", 1.0) // Full opacity for bubble group (text will be fully visible)
             .attr("transform", (d) => `translate(${d.x || centerX}, ${d.y || centerY}) scale(1)`);
 
         // Merge enter + update selections
@@ -1039,7 +1039,7 @@ const CryptoBubblesUI: React.FC = () => {
                 return `${baseColor}99`;
             })
             .attr("stroke-width", 3)
-            .style("opacity", 0.65); // More transparent for better layering
+            .style("opacity", 0.35); // Increased transparency for better layering
 
         // ============================================
         // BUBBLE CONTENT (logos, text, etc.)
@@ -1227,7 +1227,7 @@ const CryptoBubblesUI: React.FC = () => {
 
                 group.select(".bubble-rim")
                     .transition().duration(200)
-                    .style("opacity", 1)
+                    .style("opacity", 0.6)
                     .attr("stroke-width", 4);
 
                 // Text glow
@@ -1253,7 +1253,7 @@ const CryptoBubblesUI: React.FC = () => {
 
                 group.select(".bubble-rim")
                     .transition().duration(300)
-                    .style("opacity", 0.9)
+                    .style("opacity", 0.35)
                     .attr("stroke-width", 3);
 
                 group.selectAll("text")
