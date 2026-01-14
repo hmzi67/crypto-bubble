@@ -1,6 +1,6 @@
 "use client"
 
-import React, {useEffect, useState} from "react";
+import React, { useEffect, useState } from "react";
 import { Search, TrendingUp, DollarSign, BarChart3, LineChart, User, LogOut, LogIn } from "lucide-react";
 import Link from "next/link";
 import { useSession, signOut } from "next-auth/react";
@@ -52,11 +52,15 @@ const Header: React.FC<HeaderProps> = ({
     onSizeByChange,
     onScaleModeChange,
 }) => {
-    const [time, setTime] = useState(new Date().toLocaleTimeString());
+    const [time, setTime] = useState<string>("");
+    const [mounted, setMounted] = useState(false);
     const [showUserMenu, setShowUserMenu] = useState(false);
     const { data: session, status } = useSession();
 
     useEffect(() => {
+        setMounted(true);
+        setTime(new Date().toLocaleTimeString());
+
         const interval = setInterval(() => {
             setTime(new Date().toLocaleTimeString())
         }, 1000);
@@ -81,10 +85,10 @@ const Header: React.FC<HeaderProps> = ({
 
     // Compact select styling
     const selectClassName = "bg-gray-800/80 border border-gray-700/50 rounded-md px-2 py-1 text-xs text-white focus:outline-none focus:ring-1 focus:ring-blue-500 transition-all appearance-none cursor-pointer";
-    const selectStyle = { 
-        backgroundImage: `url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e")`, 
-        backgroundPosition: 'right 0.25rem center', 
-        backgroundRepeat: 'no-repeat', 
+    const selectStyle = {
+        backgroundImage: `url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e")`,
+        backgroundPosition: 'right 0.25rem center',
+        backgroundRepeat: 'no-repeat',
         backgroundSize: '1em 1em',
         paddingRight: '1.5rem'
     };
@@ -93,7 +97,7 @@ const Header: React.FC<HeaderProps> = ({
         <header className="w-full bg-gradient-to-r from-gray-900 via-gray-800 to-gray-900 border-b border-gray-700/50 shadow-lg sticky top-0 z-50">
             {/* Main Header Row - Height: 56px */}
             <div className="flex items-center justify-between px-3 h-14 gap-2">
-                
+
                 {/* Left: Logo + Categories */}
                 <div className="flex items-center gap-3 flex-shrink-0">
                     {/* Compact Logo */}
@@ -116,11 +120,10 @@ const Header: React.FC<HeaderProps> = ({
                                 <button
                                     key={category.id}
                                     onClick={() => onCategoryChange?.(category.id)}
-                                    className={`flex items-center gap-1 px-2.5 py-1.5 rounded-md text-xs font-semibold transition-all duration-150 ${
-                                        selectedCategory === category.id
+                                    className={`flex items-center gap-1 px-2.5 py-1.5 rounded-md text-xs font-semibold transition-all duration-150 ${selectedCategory === category.id
                                             ? "bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow"
                                             : "text-gray-400 hover:text-white hover:bg-gray-700/50"
-                                    }`}
+                                        }`}
                                 >
                                     {category.icon}
                                     <span className="hidden sm:inline">{category.label}</span>
@@ -162,11 +165,11 @@ const Header: React.FC<HeaderProps> = ({
                                     {session.user?.name || session.user?.email?.split('@')[0]}
                                 </span>
                             </button>
-                            
+
                             {showUserMenu && (
                                 <>
-                                    <div 
-                                        className="fixed inset-0 z-20" 
+                                    <div
+                                        className="fixed inset-0 z-20"
                                         onClick={() => setShowUserMenu(false)}
                                     ></div>
                                     <div className="absolute right-0 mt-1 w-48 bg-gray-800 border border-gray-700/50 rounded-lg shadow-xl z-30 overflow-hidden">
@@ -205,7 +208,7 @@ const Header: React.FC<HeaderProps> = ({
                     )}
                 </div>
             </div>
-            
+
             {/* Crypto Filter Bar - Height: 40px - Only shown for crypto category */}
             {showControls && selectedCategory === 'crypto' && (
                 <div className="flex items-center justify-center gap-4 px-3 h-10 bg-gray-800/40 border-t border-gray-700/30">
@@ -216,7 +219,7 @@ const Header: React.FC<HeaderProps> = ({
                             Live
                         </span>
                     </div>
-                    
+
                     <div className="w-px h-5 bg-gray-700/50" />
 
                     {/* Timeframe */}
@@ -286,13 +289,15 @@ const Header: React.FC<HeaderProps> = ({
                             <option value="realistic">Realistic</option>
                         </select>
                     </div>
-                    
+
                     <div className="w-px h-5 bg-gray-700/50" />
-                    
+
                     {/* Updated Time */}
                     <div className="flex items-center gap-1.5 text-xs">
                         <span className="text-gray-500">Updated:</span>
-                        <span className="text-white font-medium tabular-nums">{time}</span>
+                        <span className="text-white font-medium tabular-nums">
+                            {mounted ? time : '--:--:--'}
+                        </span>
                     </div>
                 </div>
             )}
