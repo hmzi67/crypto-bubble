@@ -59,15 +59,25 @@ export const authOptions: NextAuthOptions = {
     error: "/auth/error",
   },
   callbacks: {
-    async jwt({ token, user }) {
+    async jwt({ token, user, trigger }) {
       if (user) {
         token.id = user.id;
       }
+
+      // Fetch subscription data on token creation or update
+      if (trigger === "update" || user) {
+        const subscription = await prisma.subscription.findUnique({
+          where: { userId: token.id as string },
+        });
+        token.subscription = subscription;
+      }
+
       return token;
     },
     async session({ session, token }) {
       if (session.user) {
         session.user.id = token.id as string;
+        session.user.subscription = token.subscription as any;
       }
       return session;
     },

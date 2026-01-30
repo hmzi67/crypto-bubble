@@ -40,6 +40,15 @@ export async function POST(req: NextRequest) {
       },
     });
 
+    // Create default FREE subscription for new user
+    await prisma.subscription.create({
+      data: {
+        userId: user.id,
+        planType: "FREE",
+        status: "ACTIVE",
+      },
+    });
+
     // Create verification token
     const token = nanoid(32);
     const expires = new Date();

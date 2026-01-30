@@ -10,6 +10,20 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+enum PlanType {
+  FREE
+  PRO
+  ENTERPRISE
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  TRIALING
+  EXPIRED
+  CANCELLED
+  PAST_DUE
+}
+
 model User {
   id            String    @id @default(cuid())
   name          String?
@@ -22,6 +36,44 @@ model User {
   
   accounts      Account[]
   sessions      Session[]
+  subscription  Subscription?
+}
+
+model Subscription {
+  id                    String              @id @default(cuid())
+  userId                String              @unique
+  user                  User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  planType              PlanType            @default(FREE)
+  status                SubscriptionStatus  @default(ACTIVE)
+  
+  // Trial management
+  trialEndsAt           DateTime?
+  trialStartedAt        DateTime?
+  
+  // Subscription period
+  currentPeriodStart    DateTime            @default(now())
+  currentPeriodEnd      DateTime?
+  
+  // Billing
+  billingCycle          String?             // "monthly" or "yearly"
+  pricePerMonth         Int?                // price in cents
+  
+  // Payment tracking
+  stripeCustomerId      String?             @unique
+  stripeSubscriptionId  String?             @unique
+  stripePriceId         String?
+  
+  // Cancellation
+  cancelAtPeriodEnd     Boolean             @default(false)
+  canceledAt            DateTime?
+  
+  createdAt             DateTime            @default(now())
+  updatedAt             DateTime            @updatedAt
+  
+  @@index([userId])
+  @@index([status])
+  @@index([planType])
 }
 
 model Account {
