@@ -1,9 +1,10 @@
 "use client"
 
 import React, { useEffect, useState } from "react";
-import { Search, TrendingUp, DollarSign, BarChart3, LineChart, User, LogOut, LogIn } from "lucide-react";
+import { Search, TrendingUp, DollarSign, BarChart3, LineChart, User, LogOut, LogIn, Crown } from "lucide-react";
 import Link from "next/link";
 import { useSession, signOut } from "next-auth/react";
+import { Badge } from "@/components/ui/badge";
 
 
 type HeaderProps = {
@@ -56,6 +57,7 @@ const Header: React.FC<HeaderProps> = ({
     const [mounted, setMounted] = useState(false);
     const [showUserMenu, setShowUserMenu] = useState(false);
     const { data: session, status } = useSession();
+    const [subscription, setSubscription] = useState<any>(null);
 
     useEffect(() => {
         setMounted(true);
@@ -67,6 +69,24 @@ const Header: React.FC<HeaderProps> = ({
 
         return () => clearInterval(interval)
     }, [])
+
+    useEffect(() => {
+        async function fetchSubscription() {
+            if (!session?.user?.id) return;
+
+            try {
+                const response = await fetch("/api/subscription");
+                const data = await response.json();
+                if (data.success) {
+                    setSubscription(data.subscription);
+                }
+            } catch (error) {
+                console.error("Error fetching subscription:", error);
+            }
+        }
+
+        fetchSubscription();
+    }, [session?.user?.id]);
 
     const defaultCategories = [
         { id: "crypto", label: "Crypto", icon: <TrendingUp className="w-3.5 h-3.5" /> },
@@ -164,6 +184,15 @@ const Header: React.FC<HeaderProps> = ({
                                 <span className="text-gray-300 text-xs font-medium max-w-[60px] truncate hidden sm:inline">
                                     {session.user?.name || session.user?.email?.split('@')[0]}
                                 </span>
+                                {subscription?.isActive && subscription?.effectivePlan !== "FREE" && (
+                                    <Badge
+                                        variant="outline"
+                                        className="ml-1 text-[9px] px-1 py-0 h-4 bg-gradient-to-r from-yellow-400 to-orange-500 text-white border-none"
+                                    >
+                                        <Crown className="w-2.5 h-2.5 mr-0.5" />
+                                        PRO
+                                    </Badge>
+                                )}
                             </button>
 
                             {showUserMenu && (
@@ -177,6 +206,15 @@ const Header: React.FC<HeaderProps> = ({
                                             <p className="text-xs text-gray-400">Signed in as</p>
                                             <p className="text-xs font-medium text-white truncate">{session.user?.email}</p>
                                         </div>
+                                        <Link href="/profile">
+                                            <button
+                                                onClick={() => setShowUserMenu(false)}
+                                                className="w-full flex items-center gap-2 px-3 py-2 text-left text-gray-300 hover:bg-gray-700/50 transition-colors text-xs"
+                                            >
+                                                <User className="w-3.5 h-3.5" />
+                                                Profile
+                                            </button>
+                                        </Link>
                                         <Link href="/pricing">
                                             <button
                                                 onClick={() => setShowUserMenu(false)}

@@ -2,16 +2,18 @@
 
 import React, { useState } from "react";
 import Header from "@/components/layout/header";
-import { Check, Sparkles } from "lucide-react";
+import { Check, Sparkles, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useSession } from "next-auth/react";
+import { useRouter } from "next/navigation";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
+    Accordion,
+    AccordionContent,
+    AccordionItem,
+    AccordionTrigger,
 } from "@/components/ui/accordion";
 
 type BillingPeriod = "monthly" | "yearly";
@@ -78,6 +80,43 @@ const plans: PricingPlan[] = [
 export default function PricingPage() {
     const [billingPeriod, setBillingPeriod] = useState<BillingPeriod>("monthly");
     const [hoveredCard, setHoveredCard] = useState<number | null>(null);
+    const [loadingPlan, setLoadingPlan] = useState<string | null>(null);
+    const { data: session } = useSession();
+    const router = useRouter();
+
+    const handlePlanSelect = async (planName: string, planType: "PRO" | "ENTERPRISE") => {
+        if (!session) {
+            router.push("/auth/login?callbackUrl=/pricing");
+            return;
+        }
+
+        setLoadingPlan(planName);
+        try {
+            const response = await fetch("/api/subscription/checkout", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    planType,
+                    billingPeriod
+                }),
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                throw new Error(data.error || "Failed to create checkout session");
+            }
+
+            // Redirect to Stripe Checkout
+            if (data.url) {
+                window.location.href = data.url;
+            }
+        } catch (error: any) {
+            console.error("Error:", error);
+            alert(error.message || "Failed to start checkout process");
+            setLoadingPlan(null);
+        }
+    };
 
     const calculatePrice = (monthlyPrice: number) => {
         if (monthlyPrice === 0) return 0;
@@ -147,21 +186,21 @@ export default function PricingPage() {
 
                         {/* Billing Toggle - Using shadcn Tabs */}
                         <div className="flex justify-center animate-[slideUp_0.8s_ease-out_0.3s_forwards]">
-                            <Tabs 
-                                value={billingPeriod} 
+                            <Tabs
+                                value={billingPeriod}
                                 onValueChange={(value) => setBillingPeriod(value as BillingPeriod)}
                                 className="w-auto"
                             >
                                 <TabsList className="bg-gray-800 border border-gray-700">
-                                    <TabsTrigger 
+                                    <TabsTrigger
                                         value="monthly"
                                         className="data-[state=active]:bg-blue-600 data-[state=active]:text-white transition-all duration-300 text-white hover:text-white"
                                     >
                                         Monthly
                                     </TabsTrigger>
-                                    <TabsTrigger 
+                                    <TabsTrigger
                                         value="yearly"
-                                        className="data-[state=active]:bg-blue-600 data-[state=active]:text-white transition-all duration-300 text-white hover:text-white" 
+                                        className="data-[state=active]:bg-blue-600 data-[state=active]:text-white transition-all duration-300 text-white hover:text-white"
                                     >
                                         Yearly
                                     </TabsTrigger>
@@ -178,23 +217,20 @@ export default function PricingPage() {
                                 onMouseEnter={() => setHoveredCard(index)}
                                 onMouseLeave={() => setHoveredCard(null)}
                                 style={{ animationDelay: `${0.4 + index * 0.1}s` }}
-                                className={`relative transition-all duration-500 transform animate-[slideUp_0.8s_ease-out_forwards] ${
-                                    hoveredCard === index ? 'scale-105 -translate-y-2 shadow-2xl' : 'scale-100'
-                                } ${
-                                    plan.popular
+                                className={`relative transition-all duration-500 transform animate-[slideUp_0.8s_ease-out_forwards] ${hoveredCard === index ? 'scale-105 -translate-y-2 shadow-2xl' : 'scale-100'
+                                    } ${plan.popular
                                         ? "bg-gradient-to-br from-blue-600 to-purple-600 border-2 border-blue-400 shadow-2xl"
                                         : "bg-gray-800 border-gray-700 hover:border-gray-600 hover:shadow-2xl"
-                                }`}
+                                    }`}
                             >
                                 {/* Glow effect on hover */}
                                 {hoveredCard === index && (
-                                    <div className={`absolute inset-0 rounded-lg transition-opacity duration-500 ${
-                                        plan.popular ? 'bg-blue-400/20' : 'bg-blue-600/10'
-                                    } blur-xl -z-10 animate-pulse`}></div>
+                                    <div className={`absolute inset-0 rounded-lg transition-opacity duration-500 ${plan.popular ? 'bg-blue-400/20' : 'bg-blue-600/10'
+                                        } blur-xl -z-10 animate-pulse`}></div>
                                 )}
 
                                 {plan.popular && (
-                                    <Badge 
+                                    <Badge
                                         className="absolute -top-3 left-1/2 transform -translate-x-1/2 bg-yellow-500 text-black hover:bg-yellow-500 animate-bounce shadow-lg"
                                     >
                                         <Sparkles className="w-3 h-3 mr-1" />
@@ -212,9 +248,8 @@ export default function PricingPage() {
                                 <CardContent>
                                     <div className="mb-6">
                                         <div className="flex items-baseline">
-                                            <span className={`text-5xl font-bold transition-transform duration-500 inline-block text-white ${
-                                                hoveredCard === index ? 'scale-110' : 'scale-100'
-                                            }`}>
+                                            <span className={`text-5xl font-bold transition-transform duration-500 inline-block text-white ${hoveredCard === index ? 'scale-110' : 'scale-100'
+                                                }`}>
                                                 {plan.monthlyPrice === 0 ? "$0" : `$${calculatePrice(plan.monthlyPrice)}`}
                                             </span>
                                             {plan.monthlyPrice > 0 && (
@@ -232,16 +267,14 @@ export default function PricingPage() {
 
                                     <div className="space-y-4">
                                         {plan.features.map((feature, featureIndex) => (
-                                            <div 
-                                                key={featureIndex} 
+                                            <div
+                                                key={featureIndex}
                                                 style={{ transitionDelay: `${featureIndex * 50}ms` }}
-                                                className={`flex items-start transition-all duration-300 transform ${
-                                                    hoveredCard === index ? 'translate-x-2' : 'translate-x-0'
-                                                }`}
+                                                className={`flex items-start transition-all duration-300 transform ${hoveredCard === index ? 'translate-x-2' : 'translate-x-0'
+                                                    }`}
                                             >
-                                                <Check className={`w-5 h-5 mr-3 flex-shrink-0 mt-0.5 transition-transform duration-300 ${
-                                                    plan.popular ? "text-green-300" : "text-green-400"
-                                                } ${hoveredCard === index ? 'scale-125' : 'scale-100'}`} />
+                                                <Check className={`w-5 h-5 mr-3 flex-shrink-0 mt-0.5 transition-transform duration-300 ${plan.popular ? "text-green-300" : "text-green-400"
+                                                    } ${hoveredCard === index ? 'scale-125' : 'scale-100'}`} />
                                                 <span className={`text-sm ${plan.popular ? "text-blue-50" : "text-gray-300"}`}>
                                                     {feature}
                                                 </span>
@@ -252,13 +285,33 @@ export default function PricingPage() {
 
                                 <CardFooter>
                                     <Button
-                                        className={`w-full py-6 font-semibold text-lg transition-all duration-300 transform hover:scale-105 hover:shadow-xl ${
-                                            plan.popular
+                                        onClick={() => {
+                                            if (plan.name === "Free") {
+                                                if (!session) {
+                                                    router.push("/auth/signup");
+                                                } else {
+                                                    router.push("/");
+                                                }
+                                            } else if (plan.name === "Pro") {
+                                                handlePlanSelect("Pro", "PRO");
+                                            } else if (plan.name === "Enterprise") {
+                                                handlePlanSelect("Enterprise", "ENTERPRISE");
+                                            }
+                                        }}
+                                        disabled={loadingPlan === plan.name}
+                                        className={`w-full py-6 font-semibold text-lg transition-all duration-300 transform hover:scale-105 hover:shadow-xl ${plan.popular
                                                 ? "bg-white text-blue-600 hover:bg-gray-100"
                                                 : "bg-blue-600 hover:bg-blue-700 text-white"
-                                        }`}
+                                            }`}
                                     >
-                                        {plan.buttonText}
+                                        {loadingPlan === plan.name ? (
+                                            <>
+                                                <Loader2 className="w-5 h-5 mr-2 animate-spin inline" />
+                                                Processing...
+                                            </>
+                                        ) : (
+                                            plan.buttonText
+                                        )}
                                     </Button>
                                 </CardFooter>
                             </Card>
@@ -270,8 +323,8 @@ export default function PricingPage() {
                         <h2 className="text-3xl font-bold text-center mb-8">Frequently Asked Questions</h2>
                         <Accordion type="single" collapsible className="space-y-4">
                             {faqData.map((faq) => (
-                                <AccordionItem 
-                                    key={faq.id} 
+                                <AccordionItem
+                                    key={faq.id}
                                     value={faq.id}
                                     className="bg-gray-800 rounded-lg border border-gray-700 px-6 transition-all duration-300 hover:border-blue-500 hover:shadow-xl"
                                 >
