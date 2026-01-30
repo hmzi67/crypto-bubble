@@ -121,8 +121,8 @@ const Header: React.FC<HeaderProps> = ({
                                     key={category.id}
                                     onClick={() => onCategoryChange?.(category.id)}
                                     className={`flex items-center gap-1 px-2.5 py-1.5 rounded-md text-xs font-semibold transition-all duration-150 ${selectedCategory === category.id
-                                            ? "bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow"
-                                            : "text-gray-400 hover:text-white hover:bg-gray-700/50"
+                                        ? "bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow"
+                                        : "text-gray-400 hover:text-white hover:bg-gray-700/50"
                                         }`}
                                 >
                                     {category.icon}
@@ -177,6 +177,15 @@ const Header: React.FC<HeaderProps> = ({
                                             <p className="text-xs text-gray-400">Signed in as</p>
                                             <p className="text-xs font-medium text-white truncate">{session.user?.email}</p>
                                         </div>
+                                        <Link href="/pricing">
+                                            <button
+                                                onClick={() => setShowUserMenu(false)}
+                                                className="w-full flex items-center gap-2 px-3 py-2 text-left text-gray-300 hover:bg-gray-700/50 transition-colors text-xs"
+                                            >
+                                                <TrendingUp className="w-3.5 h-3.5" />
+                                                Pricing
+                                            </button>
+                                        </Link>
                                         <button
                                             onClick={() => {
                                                 setShowUserMenu(false);
@@ -193,6 +202,11 @@ const Header: React.FC<HeaderProps> = ({
                         </div>
                     ) : (
                         <div className="flex items-center gap-1">
+                            <Link href="/pricing">
+                                <button className="flex items-center gap-1 px-2 py-1.5 rounded-md text-gray-300 hover:text-white hover:bg-gray-800/50 transition-all text-xs font-medium">
+                                    <span>Pricing</span>
+                                </button>
+                            </Link>
                             <Link href="/auth/login">
                                 <button className="flex items-center gap-1 px-2 py-1.5 rounded-md text-gray-300 hover:text-white hover:bg-gray-800/50 transition-all text-xs font-medium">
                                     <LogIn className="w-3.5 h-3.5" />
