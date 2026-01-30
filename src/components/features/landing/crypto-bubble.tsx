@@ -678,66 +678,46 @@ const CryptoBubblesUI: React.FC = () => {
         const centerY = height / 2;
 
         // ============================================
-        // INTELLIGENT BUBBLE CAPACITY CALCULATION
+        // DYNAMIC BUBBLE SIZING FOR ALL BUBBLES
         // ============================================
-        const calculateOptimalBubbleCount = (screenWidth: number, screenHeight: number, data: CryptoCoin[]) => {
-            // Calculate theoretical bubble sizes first
-            const sizeMetric = sizeBy === 'volume24h' ? 'volume24h' : 'marketCap';
-            const maxValue = d3.max(data, (d) => d[sizeMetric as keyof CryptoCoin] as number) ?? 1;
-            const minValue = d3.min(data, (d) => d[sizeMetric as keyof CryptoCoin] as number) ?? 0;
-
-            const MIN_RADIUS = 25;
-            const MAX_RADIUS_PERCENT = scaleMode === 'realistic' ? 0.16 : 0.14;
-            const maxRadius = Math.min(screenWidth, screenHeight) * MAX_RADIUS_PERCENT;
-
-            // Calculate average bubble radius for capacity estimation
-            const avgRadius = (MIN_RADIUS + maxRadius) / 2;
-            const bubblePadding = 10; // Reduced minimum space between bubbles
-            const effectiveRadius = avgRadius + bubblePadding;
-
-            // Calculate usable area (95% to use more screen space)
-            const usableArea = (screenWidth * 0.95) * (screenHeight * 0.95);
-
-            // Circle packing efficiency (increased to 70% for better packing)
-            const packingEfficiency = 0.70;
-
-            // Calculate theoretical capacity
-            const bubbleArea = Math.PI * effectiveRadius * effectiveRadius;
-            const theoreticalCapacity = Math.floor((usableArea * packingEfficiency) / bubbleArea);
-
-            // Apply safety factor to ensure no overlapping (85% of theoretical - increased)
-            const safeCapacity = Math.floor(theoreticalCapacity * 0.85);
-
-            // Set reasonable bounds based on screen size
-            const minBubbles = Math.min(20, data.length);
-            const maxBubbles = Math.min(150, data.length);
-
-            return Math.max(minBubbles, Math.min(maxBubbles, safeCapacity));
-        };
-
-        // Calculate optimal bubble count and filter data
-        const optimalCount = calculateOptimalBubbleCount(width, height, marketData);
-        console.log(`Screen: ${width}x${height}, Total bubbles: ${marketData.length}, Displayed: ${optimalCount}`);
-
-        // Filter to show only the most important/largest bubbles
         const sizeMetric = sizeBy === 'volume24h' ? 'volume24h' : 'marketCap';
+
+        // Use ALL market data - no filtering
         const filteredMarketData = [...marketData]
             .sort((a, b) => {
                 const aVal = (a[sizeMetric as keyof CryptoCoin] as number) ?? 0;
                 const bVal = (b[sizeMetric as keyof CryptoCoin] as number) ?? 0;
                 return bVal - aVal;
-            })
-            .slice(0, optimalCount);
+            });
+
+        console.log(`Screen: ${width}x${height}, Total bubbles: ${marketData.length}, All displayed: ${filteredMarketData.length}`);
 
         // ============================================
-        // RADIUS CALCULATION (with filtered data)
+        // DYNAMIC RADIUS CALCULATION - scales to fit all bubbles
         // ============================================
         const maxValue = d3.max(filteredMarketData, (d) => d[sizeMetric as keyof CryptoCoin] as number) ?? 1;
         const minValue = d3.min(filteredMarketData, (d) => d[sizeMetric as keyof CryptoCoin] as number) ?? 0;
 
-        const MIN_RADIUS = 25; // Slightly smaller minimum for more variance
-        const MAX_RADIUS_PERCENT = scaleMode === 'realistic' ? 0.16 : 0.14; // Reduced max to prevent cramming
-        const maxRadius = Math.min(width, height) * MAX_RADIUS_PERCENT;
+        // Calculate dynamic sizing based on bubble count
+        const bubbleCount = filteredMarketData.length;
+        const screenArea = width * height * 0.9; // Use 90% of screen
+        const packingEfficiency = 0.65; // Circle packing efficiency
+        const availableAreaPerBubble = (screenArea * packingEfficiency) / bubbleCount;
+
+        // Calculate max radius that allows all bubbles to fit
+        const theoreticalMaxRadius = Math.sqrt(availableAreaPerBubble / Math.PI);
+
+        // Set dynamic bounds based on bubble count and screen size
+        const dynamicMinRadius = Math.max(15, Math.min(25, theoreticalMaxRadius * 0.3));
+        const dynamicMaxRadius = Math.max(dynamicMinRadius * 2, Math.min(
+            Math.min(width, height) * (scaleMode === 'realistic' ? 0.12 : 0.10),
+            theoreticalMaxRadius * 1.5
+        ));
+
+        const MIN_RADIUS = dynamicMinRadius;
+        const maxRadius = dynamicMaxRadius;
+
+        console.log(`Bubble sizing: count=${bubbleCount}, min=${MIN_RADIUS.toFixed(1)}px, max=${maxRadius.toFixed(1)}px`);
 
         const createRadiusScale = () => {
             if (scaleMode === 'balanced') {
@@ -834,58 +814,57 @@ const CryptoBubblesUI: React.FC = () => {
             simulationRef.current.stop();
         }
 
-        // Adaptive collision detection based on actual bubble density
+        // Dynamic collision detection based on bubble count and size
         const bubbleDensity = bubbleData.length / ((width * height) / 10000);
         const avgRadius = bubbleData.reduce((sum, d) => sum + (d.radius ?? 30), 0) / bubbleData.length;
 
-        // Minimal padding to fit maximum bubbles
-        const basePadding = avgRadius * 0.2; // Further reduced
-        const densityPadding = bubbleDensity * 1.0; // Further reduced
-        const collisionPadding = Math.max(5, basePadding + densityPadding); // Minimum reduced to 5
+        // Adaptive padding - smaller when many bubbles, but never overlapping
+        const collisionPadding = Math.max(2, Math.min(8, avgRadius * 0.15 / Math.log10(bubbleData.length + 1)));
 
         console.log(`Bubble density: ${bubbleDensity.toFixed(2)}, Collision padding: ${collisionPadding.toFixed(1)}`);
-        console.log(`Bubbles created: ${bubbleData.length}, Original data: ${marketData.length}`);
+        console.log(`All bubbles rendered: ${bubbleData.length}`);
 
         const simulation = d3
             .forceSimulation<CryptoCoin>(bubbleData)
-            // Moderate collision detection
+            // Strong collision detection to prevent overlapping
             .force("collision", d3.forceCollide<CryptoCoin>()
                 .radius((d) => (d.radius ?? 30) + collisionPadding)
-                .strength(1.0)  // Standard strength
-                .iterations(15)  // Sufficient iterations
+                .strength(1.0)
+                .iterations(20)  // More iterations for better packing
             )
-            // Balanced repulsion
+            // Adaptive repulsion based on bubble count
             .force("charge", d3.forceManyBody<CryptoCoin>()
-                .strength((d) => -((d.radius ?? 30) * 3))  // Reduced from 6
-                .distanceMin(15)  // Moderate minimum distance
-                .distanceMax(Math.min(width, height) * 0.6)  // Contained range
+                .strength((d) => -((d.radius ?? 30) * Math.max(1, 4 - Math.log10(bubbleData.length))))
+                .distanceMin(10)
+                .distanceMax(Math.min(width, height) * 0.5)
             )
             // Gentle center gravity
-            .force("center", d3.forceCenter(centerX, centerY).strength(0.02)) // Increased to keep bubbles centered
+            .force("center", d3.forceCenter(centerX, centerY).strength(0.03))
             // Minimal size-based gravity
-            .force("sizeGravity", sizeGravityForce(centerX, centerY, 0.002))
+            .force("sizeGravity", sizeGravityForce(centerX, centerY, 0.001))
             // Light floating motion
-            .force("float", organicFloatForce(0.005))
+            .force("float", organicFloatForce(0.003))
             // Strong boundary containment
-            .force("boundary", softBoundaryForce(width, height, 10, 1.5));
+            .force("boundary", softBoundaryForce(width, height, 5, 2.0));
 
-        // Balanced physics parameters for visibility
+        // Physics parameters optimized for many bubbles
         simulation
-            .alphaDecay(0.008)      // Faster settling
-            .velocityDecay(0.6)     // More damping to prevent bubbles flying off
-            .alphaMin(0.002)        // Higher minimum to maintain gentle motion
-            .alpha(isInitialRender ? 1.0 : 0.3);  // Moderate initial energy
+            .alphaDecay(0.005)      // Slower settling for better packing
+            .velocityDecay(0.7)     // Higher damping for stability
+            .alphaMin(0.001)
+            .alpha(isInitialRender ? 1.0 : 0.3);
 
-        // Moderate warm-up simulation to establish positions
+        // Extended warm-up for better packing with many bubbles
         if (isInitialRender) {
-            // Run fewer ticks to prevent over-separation
             simulation.alpha(1.0);
-            for (let i = 0; i < 100; i++) {
+            // More ticks for complex layouts
+            const tickCount = Math.min(300, 100 + bubbleData.length);
+            for (let i = 0; i < tickCount; i++) {
                 simulation.tick();
             }
-            // Quick settle
-            simulation.alpha(0.2);
-            for (let i = 0; i < 25; i++) {
+            // Extended settle phase
+            simulation.alpha(0.3);
+            for (let i = 0; i < 50; i++) {
                 simulation.tick();
             }
         }
@@ -1516,7 +1495,7 @@ const CryptoBubblesUI: React.FC = () => {
                 {/* Bubble Count Indicator */}
                 {!loading && !error && marketData.length > 0 && (
                     <div className="absolute top-4 right-4 z-10 bg-gray-800/80 backdrop-blur-sm rounded-lg px-3 py-1">
-                        <span className="text-xs text-gray-300">
+                        {/* <span className="text-xs text-gray-300">
                             {(() => {
                                 // Calculate the actual displayed count based on the filtered data
                                 const totalCount = marketData.length;
@@ -1541,7 +1520,7 @@ const CryptoBubblesUI: React.FC = () => {
                                     : `Showing all ${totalCount} bubbles`;
                             })()
                             }
-                        </span>
+                        </span> */}
                     </div>
                 )}
                 {loading && (
