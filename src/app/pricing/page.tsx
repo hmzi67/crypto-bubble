@@ -2,8 +2,17 @@
 
 import React, { useState } from "react";
 import Header from "@/components/layout/header";
-import { Check, ChevronDown } from "lucide-react";
+import { Check, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
 
 type BillingPeriod = "monthly" | "yearly";
 
@@ -69,7 +78,6 @@ const plans: PricingPlan[] = [
 export default function PricingPage() {
     const [billingPeriod, setBillingPeriod] = useState<BillingPeriod>("monthly");
     const [hoveredCard, setHoveredCard] = useState<number | null>(null);
-    const [openFaq, setOpenFaq] = useState<number | null>(null);
 
     const calculatePrice = (monthlyPrice: number) => {
         if (monthlyPrice === 0) return 0;
@@ -95,14 +103,17 @@ export default function PricingPage() {
 
     const faqData = [
         {
+            id: "item-1",
             question: "Can I switch plans later?",
             answer: "Yes, you can upgrade or downgrade your plan at any time. Changes will be reflected in your next billing cycle."
         },
         {
+            id: "item-2",
             question: "What payment methods do you accept?",
             answer: "We accept all major credit cards, PayPal, and cryptocurrency payments."
         },
         {
+            id: "item-3",
             question: "Is there a free trial for Pro and Enterprise?",
             answer: "Yes! Pro and Enterprise plans come with a 14-day free trial. No credit card required."
         }
@@ -134,145 +145,145 @@ export default function PricingPage() {
                             Select the perfect plan for your trading needs
                         </p>
 
-                        {/* Billing Toggle */}
-                        <div className="inline-flex items-center bg-gray-800 rounded-lg p-1 border border-gray-700 shadow-xl animate-[slideUp_0.8s_ease-out_0.3s_forwards]">
-                            <button
-                                onClick={() => setBillingPeriod("monthly")}
-                                className={`px-6 py-2 rounded-md transition-all duration-300 transform ${
-                                    billingPeriod === "monthly"
-                                        ? "bg-blue-600 text-white shadow-lg scale-105"
-                                        : "text-gray-400 hover:text-white hover:scale-105"
-                                }`}
+                        {/* Billing Toggle - Using shadcn Tabs */}
+                        <div className="flex justify-center animate-[slideUp_0.8s_ease-out_0.3s_forwards]">
+                            <Tabs 
+                                value={billingPeriod} 
+                                onValueChange={(value) => setBillingPeriod(value as BillingPeriod)}
+                                className="w-auto"
                             >
-                                Monthly
-                            </button>
-                            <button
-                                onClick={() => setBillingPeriod("yearly")}
-                                className={`px-6 py-2 rounded-md transition-all duration-300 relative transform ${
-                                    billingPeriod === "yearly"
-                                        ? "bg-blue-600 text-white shadow-lg scale-105"
-                                        : "text-gray-400 hover:text-white hover:scale-105"
-                                }`}
-                            >
-                                Yearly
-                            </button>
+                                <TabsList className="bg-gray-800 border border-gray-700">
+                                    <TabsTrigger 
+                                        value="monthly"
+                                        className="data-[state=active]:bg-blue-600 data-[state=active]:text-white transition-all duration-300 text-white hover:text-white"
+                                    >
+                                        Monthly
+                                    </TabsTrigger>
+                                    <TabsTrigger 
+                                        value="yearly"
+                                        className="data-[state=active]:bg-blue-600 data-[state=active]:text-white transition-all duration-300 text-white hover:text-white" 
+                                    >
+                                        Yearly
+                                    </TabsTrigger>
+                                </TabsList>
+                            </Tabs>
                         </div>
                     </div>
 
-                    {/* Pricing Cards */}
+                    {/* Pricing Cards - Using shadcn Card */}
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-7xl mx-auto">
                         {plans.map((plan, index) => (
-                            <div
+                            <Card
                                 key={index}
                                 onMouseEnter={() => setHoveredCard(index)}
                                 onMouseLeave={() => setHoveredCard(null)}
                                 style={{ animationDelay: `${0.4 + index * 0.1}s` }}
-                                className={`relative rounded-2xl p-8 transition-all duration-500 transform animate-[slideUp_0.8s_ease-out_forwards] ${
+                                className={`relative transition-all duration-500 transform animate-[slideUp_0.8s_ease-out_forwards] ${
                                     hoveredCard === index ? 'scale-105 -translate-y-2 shadow-2xl' : 'scale-100'
                                 } ${
                                     plan.popular
                                         ? "bg-gradient-to-br from-blue-600 to-purple-600 border-2 border-blue-400 shadow-2xl"
-                                        : "bg-gray-800 border border-gray-700 hover:border-gray-600 hover:shadow-2xl"
+                                        : "bg-gray-800 border-gray-700 hover:border-gray-600 hover:shadow-2xl"
                                 }`}
                             >
                                 {/* Glow effect on hover */}
                                 {hoveredCard === index && (
-                                    <div className={`absolute inset-0 rounded-2xl transition-opacity duration-500 ${
+                                    <div className={`absolute inset-0 rounded-lg transition-opacity duration-500 ${
                                         plan.popular ? 'bg-blue-400/20' : 'bg-blue-600/10'
                                     } blur-xl -z-10 animate-pulse`}></div>
                                 )}
 
                                 {plan.popular && (
-                                    <div className="absolute -top-4 left-1/2 transform -translate-x-1/2 bg-yellow-500 text-black px-4 py-1 rounded-full text-sm font-bold animate-bounce shadow-lg">
+                                    <Badge 
+                                        className="absolute -top-3 left-1/2 transform -translate-x-1/2 bg-yellow-500 text-black hover:bg-yellow-500 animate-bounce shadow-lg"
+                                    >
+                                        <Sparkles className="w-3 h-3 mr-1" />
                                         MOST POPULAR
-                                    </div>
+                                    </Badge>
                                 )}
 
-                                <div className="mb-6">
-                                    <h3 className="text-2xl font-bold mb-2 transition-all duration-300">{plan.name}</h3>
-                                    <p className={`text-sm ${plan.popular ? "text-blue-100" : "text-gray-400"}`}>
+                                <CardHeader>
+                                    <CardTitle className="text-2xl font-bold">{plan.name}</CardTitle>
+                                    <CardDescription className={`${plan.popular ? "text-blue-100" : "text-gray-400"}`}>
                                         {plan.description}
-                                    </p>
-                                </div>
+                                    </CardDescription>
+                                </CardHeader>
 
-                                <div className="mb-6">
-                                    <div className="flex items-baseline">
-                                        <span className={`text-5xl font-bold transition-transform duration-500 inline-block ${
-                                            hoveredCard === index ? 'scale-110' : 'scale-100'
-                                        }`}>
-                                            {plan.monthlyPrice === 0 ? "$0" : `$${calculatePrice(plan.monthlyPrice)}`}
-                                        </span>
-                                        {plan.monthlyPrice > 0 && (
-                                            <span className={`ml-2 ${plan.popular ? "text-blue-100" : "text-gray-400"}`}>
-                                                {billingPeriod === "yearly" ? "/year" : "/month"}
+                                <CardContent>
+                                    <div className="mb-6">
+                                        <div className="flex items-baseline">
+                                            <span className={`text-5xl font-bold transition-transform duration-500 inline-block text-white ${
+                                                hoveredCard === index ? 'scale-110' : 'scale-100'
+                                            }`}>
+                                                {plan.monthlyPrice === 0 ? "$0" : `$${calculatePrice(plan.monthlyPrice)}`}
                                             </span>
+                                            {plan.monthlyPrice > 0 && (
+                                                <span className={`ml-2 ${plan.popular ? "text-blue-100" : "text-gray-400"}`}>
+                                                    {billingPeriod === "yearly" ? "/year" : "/month"}
+                                                </span>
+                                            )}
+                                        </div>
+                                        {getSavingsText(plan.monthlyPrice) && (
+                                            <Badge variant="outline" className="mt-2 text-green-300 border-green-300 animate-pulse">
+                                                {getSavingsText(plan.monthlyPrice)}
+                                            </Badge>
                                         )}
                                     </div>
-                                    {getSavingsText(plan.monthlyPrice) && (
-                                        <p className="text-green-300 text-sm mt-2 font-semibold animate-pulse">
-                                            {getSavingsText(plan.monthlyPrice)}
-                                        </p>
-                                    )}
-                                </div>
 
-                                <Button
-                                    className={`w-full py-6 mb-6 font-semibold text-lg transition-all duration-300 transform hover:scale-105 hover:shadow-xl ${
-                                        plan.popular
-                                            ? "bg-white text-blue-600 hover:bg-gray-100"
-                                            : "bg-blue-600 hover:bg-blue-700 text-white"
-                                    }`}
-                                >
-                                    {plan.buttonText}
-                                </Button>
+                                    <div className="space-y-4">
+                                        {plan.features.map((feature, featureIndex) => (
+                                            <div 
+                                                key={featureIndex} 
+                                                style={{ transitionDelay: `${featureIndex * 50}ms` }}
+                                                className={`flex items-start transition-all duration-300 transform ${
+                                                    hoveredCard === index ? 'translate-x-2' : 'translate-x-0'
+                                                }`}
+                                            >
+                                                <Check className={`w-5 h-5 mr-3 flex-shrink-0 mt-0.5 transition-transform duration-300 ${
+                                                    plan.popular ? "text-green-300" : "text-green-400"
+                                                } ${hoveredCard === index ? 'scale-125' : 'scale-100'}`} />
+                                                <span className={`text-sm ${plan.popular ? "text-blue-50" : "text-gray-300"}`}>
+                                                    {feature}
+                                                </span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </CardContent>
 
-                                <div className="space-y-4">
-                                    {plan.features.map((feature, featureIndex) => (
-                                        <div 
-                                            key={featureIndex} 
-                                            style={{ transitionDelay: `${featureIndex * 50}ms` }}
-                                            className={`flex items-start transition-all duration-300 transform ${
-                                                hoveredCard === index ? 'translate-x-2' : 'translate-x-0'
-                                            }`}
-                                        >
-                                            <Check className={`w-5 h-5 mr-3 flex-shrink-0 mt-0.5 transition-transform duration-300 ${
-                                                plan.popular ? "text-green-300" : "text-green-400"
-                                            } ${hoveredCard === index ? 'scale-125' : 'scale-100'}`} />
-                                            <span className={`text-sm ${plan.popular ? "text-blue-50" : "text-gray-300"}`}>
-                                                {feature}
-                                            </span>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
+                                <CardFooter>
+                                    <Button
+                                        className={`w-full py-6 font-semibold text-lg transition-all duration-300 transform hover:scale-105 hover:shadow-xl ${
+                                            plan.popular
+                                                ? "bg-white text-blue-600 hover:bg-gray-100"
+                                                : "bg-blue-600 hover:bg-blue-700 text-white"
+                                        }`}
+                                    >
+                                        {plan.buttonText}
+                                    </Button>
+                                </CardFooter>
+                            </Card>
                         ))}
                     </div>
 
-                    {/* FAQ Section */}
+                    {/* FAQ Section - Using shadcn Accordion */}
                     <div className="mt-20 max-w-4xl mx-auto animate-[fadeIn_0.8s_ease-out_0.8s_forwards]">
                         <h2 className="text-3xl font-bold text-center mb-8">Frequently Asked Questions</h2>
-                        <div className="space-y-6">
-                            {faqData.map((faq, index) => (
-                                <div 
-                                    key={index}
-                                    className="bg-gray-800 rounded-lg border border-gray-700 overflow-hidden transition-all duration-300 hover:border-blue-500 hover:shadow-xl cursor-pointer group"
-                                    onClick={() => setOpenFaq(openFaq === index ? null : index)}
+                        <Accordion type="single" collapsible className="space-y-4">
+                            {faqData.map((faq) => (
+                                <AccordionItem 
+                                    key={faq.id} 
+                                    value={faq.id}
+                                    className="bg-gray-800 rounded-lg border border-gray-700 px-6 transition-all duration-300 hover:border-blue-500 hover:shadow-xl"
                                 >
-                                    <div className="p-6 flex justify-between items-center">
-                                        <h3 className="text-xl font-semibold group-hover:text-blue-400 transition-colors duration-300">{faq.question}</h3>
-                                        <ChevronDown className={`w-6 h-6 text-blue-400 transition-transform duration-300 ${
-                                            openFaq === index ? 'rotate-180' : 'rotate-0'
-                                        }`} />
-                                    </div>
-                                    <div className={`transition-all duration-300 overflow-hidden ${
-                                        openFaq === index ? 'max-h-40 opacity-100' : 'max-h-0 opacity-0'
-                                    }`}>
-                                        <p className="text-gray-400 px-6 pb-6">
-                                            {faq.answer}
-                                        </p>
-                                    </div>
-                                </div>
+                                    <AccordionTrigger className="text-xl font-semibold hover:text-blue-400 hover:no-underline">
+                                        {faq.question}
+                                    </AccordionTrigger>
+                                    <AccordionContent className="text-gray-400">
+                                        {faq.answer}
+                                    </AccordionContent>
+                                </AccordionItem>
                             ))}
-                        </div>
+                        </Accordion>
                     </div>
                 </div>
             </div>
