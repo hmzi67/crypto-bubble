@@ -168,7 +168,7 @@ export default function PricingPage() {
 
             <div className="relative z-10">
                 <Header
-                    title="PRICING"
+                    title="Crypto Forex Bubbles"
                     showCategories={false}
                     showSearch={false}
                     showControls={false}
