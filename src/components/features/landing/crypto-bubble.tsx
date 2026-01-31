@@ -4,6 +4,9 @@ import * as d3 from "d3";
 import Image from "next/image";
 import Header from "@/components/layout/header";
 import { fetchStockData, fetchStockHistoricalData } from "@/services/stockApiService";
+import { useFeatureAccess } from "@/hooks/useFeatureAccess";
+import { Lock, Crown, TrendingUp, DollarSign, BarChart3, LineChart } from "lucide-react";
+import Link from "next/link";
 type CryptoCoin = {
     id: string;
     symbol: string;
@@ -573,6 +576,9 @@ const HistoricalChart: React.FC<{ data: { time: number; price: number }[] }> = (
     );
 };
 const CryptoBubblesUI: React.FC = () => {
+    // Feature Access Control
+    const { hasFeature, getFeatureLimit, isPro, isFree, effectivePlan, isLoading: isLoadingAccess } = useFeatureAccess();
+
     const svgRef = useRef<SVGSVGElement | null>(null);
     const simulationRef = useRef<d3.Simulation<CryptoCoin, undefined> | null>(null);
     const [selectedCategory, setSelectedCategory] = useState<string>("crypto");
@@ -591,6 +597,19 @@ const CryptoBubblesUI: React.FC = () => {
     const [marketCapGroup, setMarketCapGroup] = useState<number>(1);
     const [sizeBy, setSizeBy] = useState<'marketCap' | 'volume24h'>('marketCap');
     const [scaleMode, setScaleMode] = useState<'realistic' | 'balanced'>('balanced');
+
+    // Handle category change with access control
+    const handleCategoryChange = (category: string) => {
+        // Check if user has access to this category
+        if (category === 'stock' && !hasFeature('stocksAccess')) {
+            // Show upgrade prompt or return
+            return;
+        }
+        if ((category === 'forex' || category === 'forex-pair') && !hasFeature('forexAccess')) {
+            return;
+        }
+        setSelectedCategory(category);
+    };
     const getChangeForTimeframe = (coin: CryptoCoin, tf: string): number => {
         switch (tf) {
             case '1h':
@@ -628,6 +647,13 @@ const CryptoBubblesUI: React.FC = () => {
                     default:
                         data = await fetchRealCryptoData();
                 }
+
+                // Apply plan-based limits
+                const maxCrypto = getFeatureLimit('maxCryptocurrencies');
+                if (selectedCategory === 'crypto' && maxCrypto !== Infinity && maxCrypto > 0) {
+                    data = data.slice(0, maxCrypto);
+                }
+
                 const filtered = data.filter(
                     (item) =>
                         item.symbol.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -647,11 +673,15 @@ const CryptoBubblesUI: React.FC = () => {
             }
         };
         void fetchData(true);
-        const interval = setInterval(() => {
-            void fetchData(false);
-        }, 30000);
-        return () => clearInterval(interval);
-    }, [searchTerm, selectedCategory, marketCapGroup]);
+
+        // Only auto-refresh for Pro users
+        if (hasFeature('autoRefresh')) {
+            const interval = setInterval(() => {
+                void fetchData(false);
+            }, 30000);
+            return () => clearInterval(interval);
+        }
+    }, [searchTerm, selectedCategory, marketCapGroup, effectivePlan]);
 
     // Header height: 56px main + 40px filter bar for crypto
     const HEADER_HEIGHT = selectedCategory === 'crypto' ? 96 : 56;
@@ -1304,6 +1334,12 @@ const CryptoBubblesUI: React.FC = () => {
     }, [marketData, dimensions, loading, error, selectedCategory, timeframe, sizeBy, scaleMode]);
     useEffect(() => {
         if (selectedBubble && (selectedBubble.category === 'crypto' || selectedBubble.category === 'stock')) {
+            // Check if user has access to historical data
+            if (!hasFeature('historicalDataAccess')) {
+                setHistoricalData(null);
+                return;
+            }
+
             const getHistoricalData = async () => {
                 setIsChartLoading(true);
                 setHistoricalData(null);
@@ -1320,7 +1356,7 @@ const CryptoBubblesUI: React.FC = () => {
         } else {
             setHistoricalData(null);
         }
-    }, [selectedBubble]);
+    }, [selectedBubble, hasFeature]);
 
     // ============================================
     // CRYPTOBUBBLES-STYLE FORCE FUNCTIONS
@@ -1461,35 +1497,67 @@ const CryptoBubblesUI: React.FC = () => {
     // Store previous bubble data for smooth transitions
     const prevBubbleDataRef = useRef<Map<string, CryptoCoin>>(new Map());
     const bubbleCountRef = useRef({ total: 0, displayed: 0 });
-    const handleCategoryChange = (category: string) => {
-        setSelectedCategory(category);
-        setSelectedBubble(null);
-    };
+
     const handleSearchChange = (term: string) => {
         setSearchTerm(term);
     };
+
     const selectedBubbleChange = selectedBubble ? getChangeForTimeframe(selectedBubble, timeframe) : 0;
+
+    // Get available categories based on plan
+    const availableCategories = [
+        { id: "crypto", label: "Crypto", icon: <TrendingUp className="w-3.5 h-3.5" />, available: hasFeature('cryptoAccess') },
+        { id: "forex", label: "Forex", icon: <DollarSign className="w-3.5 h-3.5" />, available: hasFeature('forexAccess') },
+        { id: "forex-pair", label: "Forex Pairs", icon: <BarChart3 className="w-3.5 h-3.5" />, available: hasFeature('forexAccess') },
+        { id: "stock", label: "Stocks", icon: <LineChart className="w-3.5 h-3.5" />, available: hasFeature('stocksAccess') }
+    ];
+
     return (
         <div className="fixed inset-0 w-screen h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 overflow-hidden">
-            <Header
-                title="Crypto Forex Bubbles"
-                subtitle="Live Market Visualization"
-                onCategoryChange={handleCategoryChange}
-                onSearchChange={handleSearchChange}
-                searchTerm={searchTerm}
-                selectedCategory={selectedCategory}
-                showCategories={true}
-                showSearch={true}
-                showControls={true}
-                timeframe={timeframe}
-                marketCapGroup={marketCapGroup}
-                sizeBy={sizeBy}
-                onTimeframeChange={setTimeframe}
-                onMarketCapGroupChange={setMarketCapGroup}
-                onSizeByChange={setSizeBy}
-                scaleMode={scaleMode}
-                onScaleModeChange={setScaleMode}
-            />
+            {/* Free User Banner */}
+            {isFree && !isLoadingAccess && (
+                <div className="absolute top-0 left-0 right-0 z-50 bg-gradient-to-r from-purple-900/90 to-blue-900/90 backdrop-blur-sm border-b border-purple-500/30 px-4 py-2">
+                    <div className="flex items-center justify-between mx-auto">
+                        <div className="flex items-center gap-3">
+                            <Lock className="h-4 w-4 text-purple-300" />
+                            <span className="text-sm text-white">
+                                <span className="font-semibold">Free Plan</span> - Limited to top {getFeatureLimit('maxCryptocurrencies')} cryptocurrencies, no historical charts, stocks, or forex
+                            </span>
+                        </div>
+                        <Link href="/pricing">
+                            <button className="px-4 py-1.5 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white text-sm font-semibold rounded-lg transition-all flex items-center gap-2">
+                                <Crown className="h-4 w-4" />
+                                Upgrade to Pro
+                            </button>
+                        </Link>
+                    </div>
+                </div>
+            )}
+            <div className={isFree && !isLoadingAccess ? "mt-12" : ""}>
+                <Header
+                    title="Crypto Forex Bubbles"
+                    subtitle="Live Market Visualization"
+                    onCategoryChange={handleCategoryChange}
+                    onSearchChange={handleSearchChange}
+                    searchTerm={searchTerm}
+                    selectedCategory={selectedCategory}
+                    showCategories={true}
+                    showSearch={true}
+                    showControls={true}
+                    timeframe={timeframe}
+                    marketCapGroup={marketCapGroup}
+                    sizeBy={sizeBy}
+                    onTimeframeChange={setTimeframe}
+                    onMarketCapGroupChange={setMarketCapGroup}
+                    onSizeByChange={setSizeBy}
+                    scaleMode={scaleMode}
+                    onScaleModeChange={setScaleMode}
+                    categories={availableCategories.map(cat => ({
+                        ...cat,
+                        label: cat.available ? cat.label : `${cat.label} 🔒`
+                    }))}
+                />
+            </div>
             {/* Bubble Canvas - fills remaining space below header */}
             <div className="relative" style={{ height: `calc(100vh - ${HEADER_HEIGHT}px)` }}>
                 {/* Bubble Count Indicator */}
@@ -1667,13 +1735,32 @@ const CryptoBubblesUI: React.FC = () => {
                                     {selectedBubbleChange > 0 ? '+' : ''}{selectedBubbleChange.toFixed(2)}%
                                 </span>
                             </div>
-                            {isChartLoading && (
-                                <div className="flex justify-center items-center h-32">
-                                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-400"></div>
+                            {!hasFeature('historicalDataAccess') ? (
+                                <div className="mt-4 p-4 bg-gradient-to-r from-purple-900/40 to-blue-900/40 rounded-lg border-2 border-purple-500/30">
+                                    <div className="flex items-center gap-3 mb-2">
+                                        <Lock className="h-5 w-5 text-purple-400" />
+                                        <span className="text-sm font-semibold text-purple-300">Pro Feature</span>
+                                    </div>
+                                    <p className="text-xs text-gray-300 mb-3">
+                                        Historical price charts are available for Pro members
+                                    </p>
+                                    <Link href="/pricing">
+                                        <button className="w-full px-4 py-2 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white text-sm font-semibold rounded-lg transition-all">
+                                            Upgrade to Pro
+                                        </button>
+                                    </Link>
                                 </div>
-                            )}
-                            {!isChartLoading && historicalData && (
-                                <HistoricalChart data={historicalData} />
+                            ) : (
+                                <>
+                                    {isChartLoading && (
+                                        <div className="flex justify-center items-center h-32">
+                                            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-400"></div>
+                                        </div>
+                                    )}
+                                    {!isChartLoading && historicalData && (
+                                        <HistoricalChart data={historicalData} />
+                                    )}
+                                </>
                             )}
                         </>
                     ) : selectedCategory === 'stock' ? (
@@ -1733,13 +1820,32 @@ const CryptoBubblesUI: React.FC = () => {
                                     <span className="text-white font-mono font-bold">{selectedBubble.volume24h !== undefined ? `${(selectedBubble.volume24h / 1e6).toFixed(1)}M` : '-'}</span>
                                 </div>
                             </div>
-                            {isChartLoading && (
-                                <div className="flex justify-center items-center h-32">
-                                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-400"></div>
+                            {!hasFeature('historicalDataAccess') ? (
+                                <div className="mt-4 p-4 bg-gradient-to-r from-purple-900/40 to-blue-900/40 rounded-lg border-2 border-purple-500/30">
+                                    <div className="flex items-center gap-3 mb-2">
+                                        <Lock className="h-5 w-5 text-purple-400" />
+                                        <span className="text-sm font-semibold text-purple-300">Pro Feature</span>
+                                    </div>
+                                    <p className="text-xs text-gray-300 mb-3">
+                                        Historical price charts are available for Pro members
+                                    </p>
+                                    <Link href="/pricing">
+                                        <button className="w-full px-4 py-2 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white text-sm font-semibold rounded-lg transition-all">
+                                            Upgrade to Pro
+                                        </button>
+                                    </Link>
                                 </div>
-                            )}
-                            {!isChartLoading && historicalData && (
-                                <HistoricalChart data={historicalData} />
+                            ) : (
+                                <>
+                                    {isChartLoading && (
+                                        <div className="flex justify-center items-center h-32">
+                                            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-400"></div>
+                                        </div>
+                                    )}
+                                    {!isChartLoading && historicalData && (
+                                        <HistoricalChart data={historicalData} />
+                                    )}
+                                </>
                             )}
                         </>
                     ) : (

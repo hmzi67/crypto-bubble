@@ -2,50 +2,146 @@ import { PlanType, SubscriptionStatus } from "@prisma/client";
 import prisma from "@/lib/prisma";
 
 export interface PlanFeatures {
+  // Data Access Limits
   maxCryptocurrencies: number;
+  maxStocks: number;
+  maxForexPairs: number;
+  
+  // Data Features
   realTimeUpdateInterval: number; // in seconds
   historicalDataYears: number;
+  historicalDataAccess: boolean;
+  
+  // Category Access
+  cryptoAccess: boolean;
+  stocksAccess: boolean;
+  forexAccess: boolean;
+  
+  // Advanced Features
   customAlerts: boolean;
   advancedCharts: boolean;
-  apiAccess: boolean;
-  prioritySupport: boolean;
+  multipleTimeframes: boolean;
+  detailedAnalytics: boolean;
+  
+  // Export & API
   exportData: boolean;
+  exportFormats: string[]; // csv, json, excel
+  apiAccess: boolean;
+  
+  // Support & Branding
+  prioritySupport: boolean;
   whiteLabel: boolean;
+  
+  // Update & Refresh
+  autoRefresh: boolean;
+  customRefreshInterval: boolean;
 }
 
 export const planFeatures: Record<PlanType, PlanFeatures> = {
   FREE: {
-    maxCryptocurrencies: 100,
+    // Data Access Limits
+    maxCryptocurrencies: 50, // Limited to top 50
+    maxStocks: 0, // No stock access
+    maxForexPairs: 0, // No forex access
+    
+    // Data Features
     realTimeUpdateInterval: 300, // 5 minutes
     historicalDataYears: 0,
+    historicalDataAccess: false, // No historical charts
+    
+    // Category Access
+    cryptoAccess: true, // Only crypto available
+    stocksAccess: false,
+    forexAccess: false,
+    
+    // Advanced Features
     customAlerts: false,
     advancedCharts: false,
-    apiAccess: false,
-    prioritySupport: false,
+    multipleTimeframes: false, // Only default timeframe
+    detailedAnalytics: false,
+    
+    // Export & API
     exportData: false,
+    exportFormats: [],
+    apiAccess: false,
+    
+    // Support & Branding
+    prioritySupport: false,
     whiteLabel: false,
+    
+    // Update & Refresh
+    autoRefresh: false, // Manual refresh only
+    customRefreshInterval: false,
   },
   PRO: {
-    maxCryptocurrencies: 1000,
+    // Data Access Limits
+    maxCryptocurrencies: Infinity, // Unlimited
+    maxStocks: Infinity, // Unlimited
+    maxForexPairs: Infinity, // Unlimited
+    
+    // Data Features
     realTimeUpdateInterval: 30, // 30 seconds
-    historicalDataYears: 1,
+    historicalDataYears: 5,
+    historicalDataAccess: true,
+    
+    // Category Access
+    cryptoAccess: true,
+    stocksAccess: true,
+    forexAccess: true,
+    
+    // Advanced Features
     customAlerts: true,
     advancedCharts: true,
-    apiAccess: false,
-    prioritySupport: true,
+    multipleTimeframes: true,
+    detailedAnalytics: true,
+    
+    // Export & API
     exportData: true,
+    exportFormats: ["csv", "json", "excel"],
+    apiAccess: false,
+    
+    // Support & Branding
+    prioritySupport: true,
     whiteLabel: false,
+    
+    // Update & Refresh
+    autoRefresh: true,
+    customRefreshInterval: true,
   },
   ENTERPRISE: {
+    // Data Access Limits
     maxCryptocurrencies: Infinity,
+    maxStocks: Infinity,
+    maxForexPairs: Infinity,
+    
+    // Data Features
     realTimeUpdateInterval: 1, // real-time streaming
     historicalDataYears: Infinity,
+    historicalDataAccess: true,
+    
+    // Category Access
+    cryptoAccess: true,
+    stocksAccess: true,
+    forexAccess: true,
+    
+    // Advanced Features
     customAlerts: true,
     advancedCharts: true,
-    apiAccess: true,
-    prioritySupport: true,
+    multipleTimeframes: true,
+    detailedAnalytics: true,
+    
+    // Export & API
     exportData: true,
+    exportFormats: ["csv", "json", "excel", "xml"],
+    apiAccess: true,
+    
+    // Support & Branding
+    prioritySupport: true,
     whiteLabel: true,
+    
+    // Update & Refresh
+    autoRefresh: true,
+    customRefreshInterval: true,
   },
 };
 
