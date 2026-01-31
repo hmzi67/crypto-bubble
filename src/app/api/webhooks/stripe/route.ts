@@ -73,73 +73,110 @@ export async function POST(req: NextRequest) {
 }
 
 async function handleCheckoutComplete(session: Stripe.Checkout.Session) {
-  const userId = session.metadata?.userId;
-  const planType = session.metadata?.planType as PlanType;
-  const billingPeriod = session.metadata?.billingPeriod;
+  try {
+    console.log("🔵 Processing checkout.session.completed", { sessionId: session.id });
+    
+    const userId = session.metadata?.userId;
+    const planType = session.metadata?.planType as PlanType;
+    const billingPeriod = session.metadata?.billingPeriod;
 
-  if (!userId || !planType) {
-    console.error("Missing metadata in checkout session");
-    return;
-  }
+    console.log("Metadata:", { userId, planType, billingPeriod });
 
-  const stripeSubscription = await stripe.subscriptions.retrieve(
-    session.subscription as string
-  );
+    if (!userId || !planType) {
+      console.error("❌ Missing metadata in checkout session:", { userId, planType });
+      return;
+    }
 
-  const trialEnd = stripeSubscription.trial_end
-    ? new Date(stripeSubscription.trial_end * 1000)
-    : null;
+    const stripeSubscription = await stripe.subscriptions.retrieve(
+      session.subscription as string
+    );
 
-  const currentPeriodEnd = new Date(
-    (stripeSubscription as any).current_period_end * 1000
-  );
+    console.log("Stripe subscription data:", {
+      id: stripeSubscription.id,
+      status: stripeSubscription.status,
+      trial_start: stripeSubscription.trial_start,
+      trial_end: stripeSubscription.trial_end,
+      current_period_start: stripeSubscription.current_period_start,
+      current_period_end: stripeSubscription.current_period_end,
+    });
 
-  await prisma.subscription.upsert({
-    where: { userId },
-    update: {
+    const trialEnd = stripeSubscription.trial_end
+      ? new Date(stripeSubscription.trial_end * 1000)
+      : null;
+      
+    const trialStart = stripeSubscription.trial_start
+      ? new Date(stripeSubscription.trial_start * 1000)
+      : null;
+
+    // Use current_period_start/end if available, otherwise use trial dates as fallback
+    const currentPeriodStart = stripeSubscription.current_period_start
+      ? new Date(stripeSubscription.current_period_start * 1000)
+      : (trialStart || new Date());
+    
+    const currentPeriodEnd = stripeSubscription.current_period_end
+      ? new Date(stripeSubscription.current_period_end * 1000)
+      : trialEnd;
+
+    const status: SubscriptionStatus = stripeSubscription.status === "trialing" ? "TRIALING" : "ACTIVE";
+
+    const subscriptionData = {
       planType,
-      status: stripeSubscription.status === "trialing" ? "TRIALING" : "ACTIVE",
+      status,
       stripeSubscriptionId: stripeSubscription.id,
       stripePriceId: stripeSubscription.items.data[0].price.id,
       stripeCustomerId: session.customer as string,
       billingCycle: billingPeriod,
-      trialStartedAt: trialEnd ? new Date() : null,
+      trialStartedAt: trialStart,
       trialEndsAt: trialEnd,
-      currentPeriodStart: new Date((stripeSubscription as any).current_period_start * 1000),
-      currentPeriodEnd,
+      currentPeriodStart: currentPeriodStart,
+      currentPeriodEnd: currentPeriodEnd,
       cancelAtPeriodEnd: false,
-    },
-    create: {
-      userId,
-      planType,
-      status: stripeSubscription.status === "trialing" ? "TRIALING" : "ACTIVE",
-      stripeSubscriptionId: stripeSubscription.id,
-      stripePriceId: stripeSubscription.items.data[0].price.id,
-      stripeCustomerId: session.customer as string,
-      billingCycle: billingPeriod,
-      trialStartedAt: trialEnd ? new Date() : null,
-      trialEndsAt: trialEnd,
-      currentPeriodStart: new Date((stripeSubscription as any).current_period_start * 1000),
-      currentPeriodEnd,
-    },
-  });
+    };
 
-  console.log(`✅ Subscription created/updated for user ${userId}`);
+    await prisma.subscription.upsert({
+      where: { userId },
+      update: subscriptionData,
+      create: {
+        userId,
+        ...subscriptionData,
+      },
+    });
+
+    console.log(`✅ Subscription created/updated for user ${userId} - Plan: ${planType}, Status: ${status}`);
+  } catch (error: any) {
+    console.error("❌ Error in handleCheckoutComplete:", error.message);
+    console.error("Full error:", error);
+    throw error;
+  }
 }
 
 async function handleSubscriptionUpdate(subscription: Stripe.Subscription) {
-  const userId = subscription.metadata?.userId;
+  try {
+    console.log("🔵 Processing subscription update", { subscriptionId: subscription.id });
+    
+    const userId = subscription.metadata?.userId;
 
-  if (!userId) {
-    console.error("Missing userId in subscription metadata");
-    return;
-  }
+    if (!userId) {
+      console.error("❌ Missing userId in subscription metadata");
+      return;
+    }
 
   const planType = subscription.metadata?.planType as PlanType;
-  const currentPeriodEnd = new Date((subscription as any).current_period_end * 1000);
-  const trialEnd = (subscription as any).trial_end
-    ? new Date((subscription as any).trial_end * 1000)
+  
+  const trialEnd = subscription.trial_end
+    ? new Date(subscription.trial_end * 1000)
     : null;
+  const trialStart = subscription.trial_start
+    ? new Date(subscription.trial_start * 1000)
+    : null;
+
+  const currentPeriodStart = subscription.current_period_start
+    ? new Date(subscription.current_period_start * 1000)
+    : (trialStart || new Date());
+  
+  const currentPeriodEnd = subscription.current_period_end
+    ? new Date(subscription.current_period_end * 1000)
+    : trialEnd;
 
   let status: SubscriptionStatus = "ACTIVE";
   if (subscription.status === "trialing") status = "TRIALING";
@@ -152,9 +189,10 @@ async function handleSubscriptionUpdate(subscription: Stripe.Subscription) {
     data: {
       planType,
       status,
+      trialStartedAt: trialStart,
       trialEndsAt: trialEnd,
-      currentPeriodStart: new Date((subscription as any).current_period_start * 1000),
-      currentPeriodEnd,
+      currentPeriodStart: currentPeriodStart,
+      currentPeriodEnd: currentPeriodEnd,
       cancelAtPeriodEnd: (subscription as any).cancel_at_period_end,
       canceledAt: (subscription as any).canceled_at
         ? new Date((subscription as any).canceled_at * 1000)
@@ -162,10 +200,17 @@ async function handleSubscriptionUpdate(subscription: Stripe.Subscription) {
     },
   });
 
-  console.log(`✅ Subscription updated for user ${userId}`);
+  console.log(`✅ Subscription updated for user ${userId} - Status: ${status}, Plan: ${planType}`);
+  } catch (error: any) {
+    console.error("❌ Error in handleSubscriptionUpdate:", error.message);
+    console.error("Full error:", error);
+    throw error;
+  }
 }
 
 async function handleSubscriptionDeleted(subscription: Stripe.Subscription) {
+  try {
+    console.log("🔵 Processing subscription deleted", { subscriptionId: subscription.id });
   const userId = subscription.metadata?.userId;
 
   if (!userId) {
@@ -183,9 +228,16 @@ async function handleSubscriptionDeleted(subscription: Stripe.Subscription) {
   });
 
   console.log(`✅ Subscription cancelled for user ${userId}`);
+  } catch (error: any) {
+    console.error("❌ Error in handleSubscriptionDeleted:", error.message);
+    console.error("Full error:", error);
+    throw error;
+  }
 }
 
 async function handleInvoicePaymentSucceeded(invoice: Stripe.Invoice) {
+  try {
+    console.log("🔵 Processing invoice.payment_succeeded", { invoiceId: invoice.id });
   const subscriptionId = (invoice as any).subscription as string;
 
   if (!subscriptionId) return;
@@ -195,19 +247,34 @@ async function handleInvoicePaymentSucceeded(invoice: Stripe.Invoice) {
 
   if (!userId) return;
 
+  const currentPeriodStart = subscription.current_period_start
+    ? new Date(subscription.current_period_start * 1000)
+    : new Date();
+  
+  const currentPeriodEnd = subscription.current_period_end
+    ? new Date(subscription.current_period_end * 1000)
+    : null;
+
   await prisma.subscription.update({
     where: { userId },
     data: {
       status: "ACTIVE",
-      currentPeriodStart: new Date((subscription as any).current_period_start * 1000),
-      currentPeriodEnd: new Date((subscription as any).current_period_end * 1000),
+      currentPeriodStart,
+      currentPeriodEnd,
     },
   });
 
   console.log(`✅ Payment succeeded for user ${userId}`);
+  } catch (error: any) {
+    console.error("❌ Error in handleInvoicePaymentSucceeded:", error.message);
+    console.error("Full error:", error);
+    throw error;
+  }
 }
 
 async function handleInvoicePaymentFailed(invoice: Stripe.Invoice) {
+  try {
+    console.log("🔵 Processing invoice.payment_failed", { invoiceId: invoice.id });
   const subscriptionId = (invoice as any).subscription as string;
 
   if (!subscriptionId) return;
@@ -225,4 +292,9 @@ async function handleInvoicePaymentFailed(invoice: Stripe.Invoice) {
   });
 
   console.log(`⚠️ Payment failed for user ${userId}`);
+  } catch (error: any) {
+    console.error("❌ Error in handleInvoicePaymentFailed:", error.message);
+    console.error("Full error:", error);
+    throw error;
+  }
 }

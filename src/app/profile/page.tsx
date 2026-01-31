@@ -254,15 +254,15 @@ export default function ProfilePage() {
                                 <div>
                                     <p className="text-sm text-gray-400 mb-2">Current Plan</p>
                                     <div className="flex items-center gap-2">
-                                        <Badge className={`${getPlanBadgeColor(subscription?.effectivePlan)} text-white px-3 py-1`}>
-                                            {subscription?.effectivePlan === "FREE" && <span>Free</span>}
-                                            {subscription?.effectivePlan === "PRO" && (
+                                        <Badge className={`${getPlanBadgeColor(subscription?.planType || subscription?.effectivePlan)} text-white px-3 py-1`}>
+                                            {(subscription?.planType || subscription?.effectivePlan) === "FREE" && <span>Free</span>}
+                                            {(subscription?.planType || subscription?.effectivePlan) === "PRO" && (
                                                 <>
                                                     <Crown className="w-3.5 h-3.5 mr-1" />
                                                     Pro
                                                 </>
                                             )}
-                                            {subscription?.effectivePlan === "ENTERPRISE" && (
+                                            {(subscription?.planType || subscription?.effectivePlan) === "ENTERPRISE" && (
                                                 <>
                                                     <Crown className="w-3.5 h-3.5 mr-1" />
                                                     Enterprise
@@ -272,6 +272,19 @@ export default function ProfilePage() {
                                         {subscription && getStatusBadge(subscription.status, subscription.isActive)}
                                     </div>
                                 </div>
+
+                                {subscription?.status === "TRIALING" && subscription?.trialStartedAt && (
+                                    <div>
+                                        <p className="text-sm text-gray-400 mb-1">Trial Started</p>
+                                        <p className="text-white font-medium">
+                                            {new Date(subscription.trialStartedAt).toLocaleDateString("en-US", {
+                                                year: "numeric",
+                                                month: "long",
+                                                day: "numeric"
+                                            })}
+                                        </p>
+                                    </div>
+                                )}
 
                                 {subscription?.status === "TRIALING" && subscription?.trialEndsAt && (
                                     <div>
@@ -310,6 +323,19 @@ export default function ProfilePage() {
                                     </div>
                                 )}
 
+                                {(subscription?.planType !== "FREE" && subscription?.effectivePlan !== "FREE") && (
+                                    <div>
+                                        <p className="text-sm text-gray-400 mb-1">Auto-Renewal</p>
+                                        <p className="text-white font-medium">
+                                            {!subscription.cancelAtPeriodEnd ? (
+                                                <span className="text-green-400">✓ Enabled</span>
+                                            ) : (
+                                                <span className="text-orange-400">✗ Disabled</span>
+                                            )}
+                                        </p>
+                                    </div>
+                                )}
+
                                 {subscription?.cancelAtPeriodEnd && (
                                     <div className="p-3 bg-orange-500/20 border border-orange-500/50 rounded-lg">
                                         <p className="text-orange-400 text-sm">
@@ -323,7 +349,7 @@ export default function ProfilePage() {
 
                     {/* Actions */}
                     <div className="mt-8 flex flex-wrap gap-4">
-                        {subscription?.effectivePlan === "FREE" && (
+                        {(subscription?.planType === "FREE" || subscription?.effectivePlan === "FREE") && (
                             <Button
                                 onClick={() => router.push("/pricing")}
                                 className="bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white"
@@ -334,7 +360,7 @@ export default function ProfilePage() {
                         )}
 
                         {subscription?.isActive &&
-                            subscription?.effectivePlan !== "FREE" &&
+                            (subscription?.planType !== "FREE" && subscription?.effectivePlan !== "FREE") &&
                             !subscription?.cancelAtPeriodEnd && (
                                 <Button
                                     onClick={handleCancelSubscription}
@@ -364,17 +390,17 @@ export default function ProfilePage() {
                     </div>
 
                     {/* Features */}
-                    {subscription?.effectivePlan !== "FREE" && subscription?.isActive && (
+                    {(subscription?.planType !== "FREE" && subscription?.effectivePlan !== "FREE") && subscription?.isActive && (
                         <Card className="mt-8 bg-gray-800 border-gray-700">
                             <CardHeader>
                                 <CardTitle>Your Plan Features</CardTitle>
                                 <CardDescription className="text-gray-400">
-                                    Here's what you get with your {subscription.effectivePlan} plan
+                                    Here's what you get with your {subscription.planType || subscription.effectivePlan} plan
                                 </CardDescription>
                             </CardHeader>
                             <CardContent>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    {subscription.effectivePlan === "PRO" && (
+                                    {(subscription.planType === "PRO" || subscription.effectivePlan === "PRO") && (
                                         <>
                                             <div className="flex items-start gap-2">
                                                 <CheckCircle2 className="w-5 h-5 text-green-400 mt-0.5" />
@@ -394,7 +420,7 @@ export default function ProfilePage() {
                                             </div>
                                         </>
                                     )}
-                                    {subscription.effectivePlan === "ENTERPRISE" && (
+                                    {(subscription.planType === "ENTERPRISE" || subscription.effectivePlan === "ENTERPRISE") && (
                                         <>
                                             <div className="flex items-start gap-2">
                                                 <CheckCircle2 className="w-5 h-5 text-green-400 mt-0.5" />

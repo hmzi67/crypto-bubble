@@ -64,9 +64,10 @@ model Subscription {
   stripeSubscriptionId  String?             @unique
   stripePriceId         String?
   
-  // Cancellation
+  // Cancellation and renewal
   cancelAtPeriodEnd     Boolean             @default(false)
   canceledAt            DateTime?
+  autoRenew             Boolean             @default(true)
   
   createdAt             DateTime            @default(now())
   updatedAt             DateTime            @updatedAt
