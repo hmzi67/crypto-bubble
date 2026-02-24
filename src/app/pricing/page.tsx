@@ -111,9 +111,9 @@ export default function PricingPage() {
             if (data.url) {
                 window.location.href = data.url;
             }
-        } catch (error: any) {
+        } catch (error: unknown) {
             console.error("Error:", error);
-            alert(error.message || "Failed to start checkout process");
+            alert(error instanceof Error ? error.message : "Failed to start checkout process");
             setLoadingPlan(null);
         }
     };

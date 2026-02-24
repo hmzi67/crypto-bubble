@@ -18,12 +18,13 @@ import {
     Loader2,
     AlertCircle
 } from "lucide-react";
+import { SubscriptionData } from "@/types";
 
 export default function ProfilePage() {
     const { data: session, status } = useSession();
     const router = useRouter();
     const searchParams = useSearchParams();
-    const [subscription, setSubscription] = useState<any>(null);
+    const [subscription, setSubscription] = useState<SubscriptionData | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [isCancelling, setIsCancelling] = useState(false);
     const [showSuccess, setShowSuccess] = useState(false);
@@ -90,9 +91,9 @@ export default function ProfilePage() {
             if (subData.success) {
                 setSubscription(subData.subscription);
             }
-        } catch (error: any) {
+        } catch (error: unknown) {
             console.error("Error:", error);
-            alert(error.message || "Failed to cancel subscription");
+            alert(error instanceof Error ? error.message : "Failed to cancel subscription");
         } finally {
             setIsCancelling(false);
         }
@@ -254,7 +255,7 @@ export default function ProfilePage() {
                                 <div>
                                     <p className="text-sm text-gray-400 mb-2">Current Plan</p>
                                     <div className="flex items-center gap-2">
-                                        <Badge className={`${getPlanBadgeColor(subscription?.planType || subscription?.effectivePlan)} text-white px-3 py-1`}>
+                                        <Badge className={`${getPlanBadgeColor(subscription?.planType || subscription?.effectivePlan || "FREE")} text-white px-3 py-1`}>
                                             {(subscription?.planType || subscription?.effectivePlan) === "FREE" && <span>Free</span>}
                                             {(subscription?.planType || subscription?.effectivePlan) === "PRO" && (
                                                 <>
@@ -269,7 +270,7 @@ export default function ProfilePage() {
                                                 </>
                                             )}
                                         </Badge>
-                                        {subscription && getStatusBadge(subscription.status, subscription.isActive)}
+                                        {subscription && getStatusBadge(subscription.status || "", subscription.isActive ?? false)}
                                     </div>
                                 </div>
 
@@ -327,7 +328,7 @@ export default function ProfilePage() {
                                     <div>
                                         <p className="text-sm text-gray-400 mb-1">Auto-Renewal</p>
                                         <p className="text-white font-medium">
-                                            {!subscription.cancelAtPeriodEnd ? (
+                                            {!subscription?.cancelAtPeriodEnd ? (
                                                 <span className="text-green-400">✓ Enabled</span>
                                             ) : (
                                                 <span className="text-orange-400">✗ Disabled</span>
@@ -395,7 +396,7 @@ export default function ProfilePage() {
                             <CardHeader>
                                 <CardTitle>Your Plan Features</CardTitle>
                                 <CardDescription className="text-gray-400">
-                                    Here's what you get with your {subscription.planType || subscription.effectivePlan} plan
+                                    Here&apos;s what you get with your {subscription.planType || subscription.effectivePlan} plan
                                 </CardDescription>
                             </CardHeader>
                             <CardContent>

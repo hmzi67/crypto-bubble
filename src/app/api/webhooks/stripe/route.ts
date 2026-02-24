@@ -18,10 +18,11 @@ export async function POST(req: NextRequest) {
 
     try {
       event = stripe.webhooks.constructEvent(body, signature, webhookSecret);
-    } catch (err: any) {
-      console.error(`⚠️  Webhook signature verification failed.`, err.message);
+    } catch (err: unknown) {
+      const errMsg = err instanceof Error ? err.message : String(err);
+      console.error(`⚠️  Webhook signature verification failed.`, errMsg);
       return NextResponse.json(
-        { error: `Webhook Error: ${err.message}` },
+        { error: `Webhook Error: ${errMsg}` },
         { status: 400 }
       );
     }
@@ -63,10 +64,11 @@ export async function POST(req: NextRequest) {
     }
 
     return NextResponse.json({ received: true });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error processing webhook:", error);
+    const message = error instanceof Error ? error.message : "Webhook processing failed";
     return NextResponse.json(
-      { error: error.message || "Webhook processing failed" },
+      { error: message },
       { status: 500 }
     );
   }
@@ -96,8 +98,8 @@ async function handleCheckoutComplete(session: Stripe.Checkout.Session) {
       status: stripeSubscription.status,
       trial_start: stripeSubscription.trial_start,
       trial_end: stripeSubscription.trial_end,
-      current_period_start: stripeSubscription.current_period_start,
-      current_period_end: stripeSubscription.current_period_end,
+      current_period_start: stripeSubscription.items.data[0]?.current_period_start,
+      current_period_end: stripeSubscription.items.data[0]?.current_period_end,
     });
 
     const trialEnd = stripeSubscription.trial_end
@@ -109,12 +111,13 @@ async function handleCheckoutComplete(session: Stripe.Checkout.Session) {
       : null;
 
     // Use current_period_start/end if available, otherwise use trial dates as fallback
-    const currentPeriodStart = stripeSubscription.current_period_start
-      ? new Date(stripeSubscription.current_period_start * 1000)
+    const itemPeriod = stripeSubscription.items.data[0];
+    const currentPeriodStart = itemPeriod?.current_period_start
+      ? new Date(itemPeriod.current_period_start * 1000)
       : (trialStart || new Date());
     
-    const currentPeriodEnd = stripeSubscription.current_period_end
-      ? new Date(stripeSubscription.current_period_end * 1000)
+    const currentPeriodEnd = itemPeriod?.current_period_end
+      ? new Date(itemPeriod.current_period_end * 1000)
       : trialEnd;
 
     const status: SubscriptionStatus = stripeSubscription.status === "trialing" ? "TRIALING" : "ACTIVE";
@@ -143,8 +146,8 @@ async function handleCheckoutComplete(session: Stripe.Checkout.Session) {
     });
 
     console.log(`✅ Subscription created/updated for user ${userId} - Plan: ${planType}, Status: ${status}`);
-  } catch (error: any) {
-    console.error("❌ Error in handleCheckoutComplete:", error.message);
+  } catch (error: unknown) {
+    console.error("❌ Error in handleCheckoutComplete:", error instanceof Error ? error.message : error);
     console.error("Full error:", error);
     throw error;
   }
@@ -170,12 +173,13 @@ async function handleSubscriptionUpdate(subscription: Stripe.Subscription) {
     ? new Date(subscription.trial_start * 1000)
     : null;
 
-  const currentPeriodStart = subscription.current_period_start
-    ? new Date(subscription.current_period_start * 1000)
+  const subItem = subscription.items.data[0];
+  const currentPeriodStart = subItem?.current_period_start
+    ? new Date(subItem.current_period_start * 1000)
     : (trialStart || new Date());
   
-  const currentPeriodEnd = subscription.current_period_end
-    ? new Date(subscription.current_period_end * 1000)
+  const currentPeriodEnd = subItem?.current_period_end
+    ? new Date(subItem.current_period_end * 1000)
     : trialEnd;
 
   let status: SubscriptionStatus = "ACTIVE";
@@ -193,16 +197,16 @@ async function handleSubscriptionUpdate(subscription: Stripe.Subscription) {
       trialEndsAt: trialEnd,
       currentPeriodStart: currentPeriodStart,
       currentPeriodEnd: currentPeriodEnd,
-      cancelAtPeriodEnd: (subscription as any).cancel_at_period_end,
-      canceledAt: (subscription as any).canceled_at
-        ? new Date((subscription as any).canceled_at * 1000)
+      cancelAtPeriodEnd: subscription.cancel_at_period_end,
+      canceledAt: subscription.canceled_at
+        ? new Date(subscription.canceled_at * 1000)
         : null,
     },
   });
 
   console.log(`✅ Subscription updated for user ${userId} - Status: ${status}, Plan: ${planType}`);
-  } catch (error: any) {
-    console.error("❌ Error in handleSubscriptionUpdate:", error.message);
+  } catch (error: unknown) {
+    console.error("❌ Error in handleSubscriptionUpdate:", error instanceof Error ? error.message : error);
     console.error("Full error:", error);
     throw error;
   }
@@ -228,8 +232,8 @@ async function handleSubscriptionDeleted(subscription: Stripe.Subscription) {
   });
 
   console.log(`✅ Subscription cancelled for user ${userId}`);
-  } catch (error: any) {
-    console.error("❌ Error in handleSubscriptionDeleted:", error.message);
+  } catch (error: unknown) {
+    console.error("❌ Error in handleSubscriptionDeleted:", error instanceof Error ? error.message : error);
     console.error("Full error:", error);
     throw error;
   }
@@ -238,7 +242,7 @@ async function handleSubscriptionDeleted(subscription: Stripe.Subscription) {
 async function handleInvoicePaymentSucceeded(invoice: Stripe.Invoice) {
   try {
     console.log("🔵 Processing invoice.payment_succeeded", { invoiceId: invoice.id });
-  const subscriptionId = (invoice as any).subscription as string;
+  const subscriptionId = invoice.parent?.subscription_details?.subscription as string | undefined;
 
   if (!subscriptionId) return;
 
@@ -247,12 +251,13 @@ async function handleInvoicePaymentSucceeded(invoice: Stripe.Invoice) {
 
   if (!userId) return;
 
-  const currentPeriodStart = subscription.current_period_start
-    ? new Date(subscription.current_period_start * 1000)
+  const paymentSubItem = subscription.items.data[0];
+  const currentPeriodStart = paymentSubItem?.current_period_start
+    ? new Date(paymentSubItem.current_period_start * 1000)
     : new Date();
   
-  const currentPeriodEnd = subscription.current_period_end
-    ? new Date(subscription.current_period_end * 1000)
+  const currentPeriodEnd = paymentSubItem?.current_period_end
+    ? new Date(paymentSubItem.current_period_end * 1000)
     : null;
 
   await prisma.subscription.update({
@@ -265,8 +270,8 @@ async function handleInvoicePaymentSucceeded(invoice: Stripe.Invoice) {
   });
 
   console.log(`✅ Payment succeeded for user ${userId}`);
-  } catch (error: any) {
-    console.error("❌ Error in handleInvoicePaymentSucceeded:", error.message);
+  } catch (error: unknown) {
+    console.error("❌ Error in handleInvoicePaymentSucceeded:", error instanceof Error ? error.message : error);
     console.error("Full error:", error);
     throw error;
   }
@@ -275,7 +280,7 @@ async function handleInvoicePaymentSucceeded(invoice: Stripe.Invoice) {
 async function handleInvoicePaymentFailed(invoice: Stripe.Invoice) {
   try {
     console.log("🔵 Processing invoice.payment_failed", { invoiceId: invoice.id });
-  const subscriptionId = (invoice as any).subscription as string;
+  const subscriptionId = invoice.parent?.subscription_details?.subscription as string | undefined;
 
   if (!subscriptionId) return;
 
@@ -292,8 +297,8 @@ async function handleInvoicePaymentFailed(invoice: Stripe.Invoice) {
   });
 
   console.log(`⚠️ Payment failed for user ${userId}`);
-  } catch (error: any) {
-    console.error("❌ Error in handleInvoicePaymentFailed:", error.message);
+  } catch (error: unknown) {
+    console.error("❌ Error in handleInvoicePaymentFailed:", error instanceof Error ? error.message : error);
     console.error("Full error:", error);
     throw error;
   }

@@ -11,6 +11,25 @@
 // }
 
 
+export interface SubscriptionData {
+  id?: string;
+  planType?: string;
+  effectivePlan?: string;
+  status?: string;
+  isActive?: boolean;
+  createdAt?: string;
+  trialStartedAt?: string | null;
+  trialEndsAt?: string | null;
+  currentPeriodEnd?: string | null;
+  currentPeriodStart?: string | null;
+  billingCycle?: string | null;
+  cancelAtPeriodEnd?: boolean;
+  canceledAt?: string | null;
+  stripeSubscriptionId?: string | null;
+  stripePriceId?: string | null;
+  stripeCustomerId?: string | null;
+}
+
 export interface ForexBubbleData {
   id: string;
   symbol: string; // e.g., "EUR", "GBP", "JPY"

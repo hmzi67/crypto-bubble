@@ -135,7 +135,7 @@ export function SubscriptionStatus() {
                             Your subscription has expired
                         </p>
                         <p className="text-xs text-red-700 dark:text-red-300 mt-1">
-                            You've been downgraded to the Free plan. Upgrade to regain access to pro features.
+                            You&apos;ve been downgraded to the Free plan. Upgrade to regain access to pro features.
                         </p>
                         <Link href="/pricing">
                             <Button className="mt-2" size="sm" variant="destructive">

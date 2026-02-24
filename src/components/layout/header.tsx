@@ -5,6 +5,7 @@ import { Search, TrendingUp, DollarSign, BarChart3, LineChart, User, LogOut, Log
 import Link from "next/link";
 import { useSession, signOut } from "next-auth/react";
 import { Badge } from "@/components/ui/badge";
+import { SubscriptionData } from "@/types";
 
 
 type HeaderProps = {
@@ -57,7 +58,7 @@ const Header: React.FC<HeaderProps> = ({
     const [mounted, setMounted] = useState(false);
     const [showUserMenu, setShowUserMenu] = useState(false);
     const { data: session, status } = useSession();
-    const [subscription, setSubscription] = useState<any>(null);
+    const [subscription, setSubscription] = useState<SubscriptionData | null>(null);
 
     useEffect(() => {
         setMounted(true);

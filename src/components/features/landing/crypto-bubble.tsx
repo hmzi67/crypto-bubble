@@ -579,7 +579,8 @@ const CryptoBubblesUI: React.FC = () => {
     // Feature Access Control
     const { hasFeature, getFeatureLimit, isPro, isFree, effectivePlan, isLoading: isLoadingAccess } = useFeatureAccess();
 
-    const svgRef = useRef<SVGSVGElement | null>(null);
+    const canvasRef = useRef<HTMLCanvasElement | null>(null);
+    const hoveredNodeRef = useRef<CryptoCoin | null>(null);
     const simulationRef = useRef<d3.Simulation<CryptoCoin, undefined> | null>(null);
     const [selectedCategory, setSelectedCategory] = useState<string>("crypto");
     const [searchTerm, setSearchTerm] = useState<string>("");
@@ -685,27 +686,38 @@ const CryptoBubblesUI: React.FC = () => {
 
     // Header height: 56px main + 40px filter bar for crypto
     const HEADER_HEIGHT = selectedCategory === 'crypto' ? 96 : 56;
+    const FREE_BANNER_HEIGHT = isFree && !isLoadingAccess ? 48 : 0;
 
     useEffect(() => {
         const handleResize = () => {
-            // Use full viewport width and height minus header
+            // Use full viewport width and visible height minus header + free-plan banner
             setDimensions({
                 width: window.innerWidth,
-                height: window.innerHeight - HEADER_HEIGHT,
+                height: Math.max(320, window.innerHeight - HEADER_HEIGHT - FREE_BANNER_HEIGHT),
             });
         };
         handleResize();
         window.addEventListener("resize", handleResize);
         return () => window.removeEventListener("resize", handleResize);
-    }, []);
-    // D3 Rendering with CryptoBubbles-style animations and physics
+    }, [HEADER_HEIGHT, FREE_BANNER_HEIGHT]);
+    // Canvas Rendering with CryptoBubbles-style animations and physics
     useEffect(() => {
-        if (!svgRef.current) return;
+        if (!canvasRef.current) return;
         if (loading || error || marketData.length === 0) return;
-        const svg = d3.select(svgRef.current);
+        
+        const canvas = canvasRef.current;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) return;
+
         const { width, height } = dimensions;
         const centerX = width / 2;
         const centerY = height / 2;
+
+        // Handle high DPI displays
+        const dpr = window.devicePixelRatio || 1;
+        canvas.width = width * dpr;
+        canvas.height = height * dpr;
+        ctx.scale(dpr, dpr);
 
         // ============================================
         // DYNAMIC BUBBLE SIZING FOR ALL BUBBLES
@@ -720,57 +732,28 @@ const CryptoBubblesUI: React.FC = () => {
                 return bVal - aVal;
             });
 
-        console.log(`Screen: ${width}x${height}, Total bubbles: ${marketData.length}, All displayed: ${filteredMarketData.length}`);
-
         // ============================================
-        // DYNAMIC RADIUS CALCULATION - scales to fit all bubbles
+        // DYNAMIC RADIUS CALCULATION - fills viewport like cryptobubbles.net
         // ============================================
         const maxValue = d3.max(filteredMarketData, (d) => d[sizeMetric as keyof CryptoCoin] as number) ?? 1;
         const minValue = d3.min(filteredMarketData, (d) => d[sizeMetric as keyof CryptoCoin] as number) ?? 0;
-
-        // Calculate dynamic sizing based on bubble count
         const bubbleCount = filteredMarketData.length;
-        const screenArea = width * height * 0.9; // Use 90% of screen
-        const packingEfficiency = 0.65; // Circle packing efficiency
-        const availableAreaPerBubble = (screenArea * packingEfficiency) / bubbleCount;
 
-        // Calculate max radius that allows all bubbles to fit
-        const theoreticalMaxRadius = Math.sqrt(availableAreaPerBubble / Math.PI);
+        // Calculate dynamic radius range for denser packing with better readability
+        const screenArea = width * height;
+        const targetCoverage = Math.min(0.62, 0.38 + (bubbleCount / 550));
+        const avgBubbleArea = (screenArea * targetCoverage) / bubbleCount;
+        const avgRadius = Math.sqrt(avgBubbleArea / Math.PI);
+        
+        // Keep bubble size hierarchy visible while avoiding tiny circles
+        const dynamicMin = Math.max(16, avgRadius * 0.5);
+        const dynamicMax = Math.min(Math.min(width, height) * 0.18, dynamicMin * 4.2);
 
-        // Set dynamic bounds based on bubble count and screen size
-        const dynamicMinRadius = Math.max(15, Math.min(25, theoreticalMaxRadius * 0.3));
-        const dynamicMaxRadius = Math.max(dynamicMinRadius * 2, Math.min(
-            Math.min(width, height) * (scaleMode === 'realistic' ? 0.12 : 0.10),
-            theoreticalMaxRadius * 1.5
-        ));
-
-        const MIN_RADIUS = dynamicMinRadius;
-        const maxRadius = dynamicMaxRadius;
-
-        console.log(`Bubble sizing: count=${bubbleCount}, min=${MIN_RADIUS.toFixed(1)}px, max=${maxRadius.toFixed(1)}px`);
-
-        const createRadiusScale = () => {
-            if (scaleMode === 'balanced') {
-                const logMin = Math.log10(Math.max(minValue, 1));
-                const logMax = Math.log10(Math.max(maxValue, 1));
-
-                return (value: number) => {
-                    const safeValue = Math.max(value, 1);
-                    const logValue = Math.log10(safeValue);
-                    const normalized = (logValue - logMin) / (logMax - logMin || 1);
-                    const curved = Math.pow(normalized, 0.7);
-                    return MIN_RADIUS + curved * (maxRadius - MIN_RADIUS);
-                };
-            } else {
-                const powerScale = d3.scalePow()
-                    .exponent(0.5)
-                    .domain([minValue, maxValue])
-                    .range([MIN_RADIUS, maxRadius]);
-                return (value: number) => powerScale(value);
-            }
-        };
-
-        const radiusScale = createRadiusScale();
+        // Use a power scale with a low exponent to heavily compress the differences
+        const radiusScale = d3.scalePow()
+            .exponent(0.15)
+            .domain([minValue || 1, maxValue])
+            .range([dynamicMin, dynamicMax]);
 
         // ============================================
         // PREPARE BUBBLE DATA WITH POSITION PERSISTENCE
@@ -796,26 +779,10 @@ const CryptoBubblesUI: React.FC = () => {
                 x = prevBubble.x ?? centerX;
                 y = prevBubble.y ?? centerY;
             } else {
-                // Improved spawn distribution using Phyllotaxis pattern (sunflower seed arrangement)
-                // This is mathematically optimal for packing circles
-                const goldenAngle = Math.PI * (3 - Math.sqrt(5)); // ~137.5 degrees
-                const angle = index * goldenAngle;
-
-                // Scale radius based on index with some randomization for natural look
-                // Larger indices = further from center
-                const scaleFactor = Math.sqrt(index + 1) / Math.sqrt(sortedMarketData.length + 1);
-                const maxSpawnRadius = Math.min(width, height) * 0.15; // Very tight spawn area
-                const spawnDist = scaleFactor * maxSpawnRadius;
-
-                // Add small random offset for more natural appearance
-                const randomOffset = newRadius * 0.2; // Reduced randomness
-                x = centerX + Math.cos(angle) * spawnDist + (Math.random() - 0.5) * randomOffset;
-                y = centerY + Math.sin(angle) * spawnDist + (Math.random() - 0.5) * randomOffset;
-
-                // Ensure initial position is well within bounds
-                const padding = newRadius + 20;
-                x = Math.max(padding, Math.min(width - padding, x));
-                y = Math.max(padding, Math.min(height - padding, y));
+                // Spawn randomly across the entire rectangular viewport
+                const padding = newRadius + 10;
+                x = padding + Math.random() * (width - padding * 2);
+                y = padding + Math.random() * (height - padding * 2);
             }
 
             return {
@@ -844,487 +811,350 @@ const CryptoBubblesUI: React.FC = () => {
             simulationRef.current.stop();
         }
 
-        // Dynamic collision detection based on bubble count and size
-        const bubbleDensity = bubbleData.length / ((width * height) / 10000);
-        const avgRadius = bubbleData.reduce((sum, d) => sum + (d.radius ?? 30), 0) / bubbleData.length;
-
-        // Adaptive padding - smaller when many bubbles, but never overlapping
-        const collisionPadding = Math.max(2, Math.min(8, avgRadius * 0.15 / Math.log10(bubbleData.length + 1)));
-
-        console.log(`Bubble density: ${bubbleDensity.toFixed(2)}, Collision padding: ${collisionPadding.toFixed(1)}`);
-        console.log(`All bubbles rendered: ${bubbleData.length}`);
-
         const simulation = d3
             .forceSimulation<CryptoCoin>(bubbleData)
-            // Strong collision detection to prevent overlapping
+            // Extremely weak centering just to prevent them from getting stuck in corners
+            .force("x", d3.forceX<CryptoCoin>(width / 2).strength(0.0008))
+            .force("y", d3.forceY<CryptoCoin>(height / 2).strength(0.0008))
+            // Softer repulsion keeps bubbles visually dense while still moving freely
+            .force("charge", d3.forceManyBody<CryptoCoin>().strength((d) => -(d.radius ?? 20) * 0.35))
+            // Allow very slight overlap for compact, reference-like density
             .force("collision", d3.forceCollide<CryptoCoin>()
-                .radius((d) => (d.radius ?? 30) + collisionPadding)
-                .strength(1.0)
-                .iterations(20)  // More iterations for better packing
+                .radius((d) => Math.max(6, (d.radius ?? 20) - 1))
+                .strength(0.95)
+                .iterations(4)
             )
-            // Adaptive repulsion based on bubble count
-            .force("charge", d3.forceManyBody<CryptoCoin>()
-                .strength((d) => -((d.radius ?? 30) * Math.max(1, 4 - Math.log10(bubbleData.length))))
-                .distanceMin(10)
-                .distanceMax(Math.min(width, height) * 0.5)
-            )
-            // Gentle center gravity
-            .force("center", d3.forceCenter(centerX, centerY).strength(0.03))
-            // Minimal size-based gravity
-            .force("sizeGravity", sizeGravityForce(centerX, centerY, 0.001))
-            // Light floating motion
-            .force("float", organicFloatForce(0.003))
-            // Strong boundary containment
-            .force("boundary", softBoundaryForce(width, height, 5, 2.0));
+            .alphaDecay(0.005)
+            .velocityDecay(0.2);
 
-        // Physics parameters optimized for many bubbles
-        simulation
-            .alphaDecay(0.005)      // Slower settling for better packing
-            .velocityDecay(0.7)     // Higher damping for stability
-            .alphaMin(0.001)
-            .alpha(isInitialRender ? 1.0 : 0.3);
-
-        // Extended warm-up for better packing with many bubbles
+        // On initial render, warm-up with enough ticks to spread; on refresh, re-heat gently
         if (isInitialRender) {
             simulation.alpha(1.0);
-            // More ticks for complex layouts
-            const tickCount = Math.min(300, 100 + bubbleData.length);
-            for (let i = 0; i < tickCount; i++) {
+            for (let i = 0; i < 300; i++) {
                 simulation.tick();
             }
-            // Extended settle phase
-            simulation.alpha(0.3);
-            for (let i = 0; i < 50; i++) {
-                simulation.tick();
-            }
+        } else {
+            simulation.alpha(0.3).restart();
         }
 
         simulationRef.current = simulation;
 
         // ============================================
-        // SVG SETUP & FILTERS
+        // CANVAS RENDERING LOOP
         // ============================================
-
-        // ============================================
-        // ZOOM & PAN BEHAVIOR
-        // ============================================
-        let zoomGroup = svg.select<SVGGElement>(".zoom-group");
-        if (zoomGroup.empty()) {
-            zoomGroup = svg.append("g").attr("class", "zoom-group");
-
-            const zoom = d3.zoom<SVGSVGElement, unknown>()
-                .scaleExtent([0.5, 3])  // Min 50% zoom, max 300% zoom
-                .translateExtent([[-width * 0.5, -height * 0.5], [width * 1.5, height * 1.5]])
-                .on("zoom", (event) => {
-                    zoomGroup.attr("transform", event.transform);
-                });
-
-            svg.call(zoom);
-
-            // Double-click to reset zoom
-            svg.on("dblclick.zoom", () => {
-                svg.transition()
-                    .duration(500)
-                    .call(zoom.transform, d3.zoomIdentity);
-            });
-        }
-
-        // Use data join pattern for smooth updates
-        let defs = zoomGroup.select<SVGDefsElement>("defs");
-        if (defs.empty()) {
-            defs = zoomGroup.append("defs");
-
-            // Enhanced glow filters
-            const addEnhancedGlow = (id: string, color: string, intensity: number = 0.9) => {
-                const f = defs.append("filter")
-                    .attr("id", id)
-                    .attr("x", "-100%")
-                    .attr("y", "-100%")
-                    .attr("width", "300%")
-                    .attr("height", "300%");
-
-                // Multiple blur layers for rich glow
-                f.append("feGaussianBlur")
-                    .attr("in", "SourceGraphic")
-                    .attr("stdDeviation", "3")
-                    .attr("result", "blur1");
-
-                f.append("feGaussianBlur")
-                    .attr("in", "SourceGraphic")
-                    .attr("stdDeviation", "6")
-                    .attr("result", "blur2");
-
-                f.append("feFlood")
-                    .attr("flood-color", color)
-                    .attr("flood-opacity", intensity)
-                    .attr("result", "color");
-
-                f.append("feComposite")
-                    .attr("in", "color")
-                    .attr("in2", "blur2")
-                    .attr("operator", "in")
-                    .attr("result", "glow");
-
-                const merge = f.append("feMerge");
-                merge.append("feMergeNode").attr("in", "glow");
-                merge.append("feMergeNode").attr("in", "SourceGraphic");
-            };
-
-            addEnhancedGlow("neon-green-glow", "#22c55e", 0.85);
-            addEnhancedGlow("neon-red-glow", "#ef4444", 0.85);
-            addEnhancedGlow("neon-neutral-glow", "#6b7280", 0.5);
-        }
-
-        // ============================================
-        // BUBBLE RENDERING WITH DATA JOIN
-        // ============================================
-
-        const bubbleGroups = zoomGroup
-            .selectAll<SVGGElement, CryptoCoin>(".bubble-group")
-            .data(bubbleData, (d) => d.id);
-
-        // EXIT: Remove old bubbles with fade out
-        bubbleGroups.exit<CryptoCoin>()
-            .transition()
-            .duration(400)
-            .ease(d3.easeCubicIn)
-            .style("opacity", 0)
-            .attr("transform", (d) => `translate(${d.x || 0}, ${d.y || 0}) scale(0.5)`)
-            .remove();
-
-        // ENTER: Create new bubbles
-        const enterGroups = bubbleGroups.enter()
-            .append("g")
-            .attr("class", "bubble-group")
-            .style("cursor", "grab")
-            .style("opacity", 0)
-            .attr("transform", (d) => `translate(${d.x || centerX}, ${d.y || centerY}) scale(0)`);
-
-        // Core circle (main bubble)
-        enterGroups.append("circle")
-            .attr("class", "bubble-core")
-            .attr("r", 0)
-            .attr("fill", "rgba(0, 0, 0, 0.15)");
-
-        // Rim circle (outer glow ring)
-        enterGroups.append("circle")
-            .attr("class", "bubble-rim")
-            .attr("r", 0)
-            .attr("fill", "none");
-
-        // ENTER animation: bubbles expand into place
-        enterGroups
-            .transition()
-            .duration(isInitialRender ? 800 : 500)
-            .delay((_, i) => isInitialRender ? i * 15 : i * 8)
-            .ease(d3.easeBackOut.overshoot(1.1))
-            .style("opacity", 1.0) // Full opacity for bubble group (text will be fully visible)
-            .attr("transform", (d) => `translate(${d.x || centerX}, ${d.y || centerY}) scale(1)`);
-
-        // Merge enter + update selections
-        const allGroups = enterGroups.merge(bubbleGroups);
-
-        // UPDATE: Animate radius, stroke, and color changes
-        allGroups.select<SVGCircleElement>(".bubble-core")
-            .transition()
-            .duration(600)
-            .ease(d3.easeCubicOut)
-            .attr("r", (d) => d.radius ?? 30)
-            .attr("stroke", (d) => getMarketColor(getChangeForTimeframe(d, timeframe)))
-            .attr("stroke-width", 3)
-            .style("filter", (d) => {
-                const change = getChangeForTimeframe(d, timeframe);
-                return change > 0 ? "url(#neon-green-glow)" : change < 0 ? "url(#neon-red-glow)" : "url(#neon-neutral-glow)";
-            });
-
-        allGroups.select<SVGCircleElement>(".bubble-rim")
-            .transition()
-            .duration(600)
-            .ease(d3.easeCubicOut)
-            .attr("r", (d) => (d.radius ?? 30) + 4)
-            .attr("stroke", (d) => {
-                const change = getChangeForTimeframe(d, timeframe);
-                const baseColor = getMarketColor(change);
-                return `${baseColor}99`;
-            })
-            .attr("stroke-width", 3)
-            .style("opacity", 0.35); // Increased transparency for better layering
-
-        // ============================================
-        // BUBBLE CONTENT (logos, text, etc.)
-        // ============================================
-
-        // Remove old content and re-add (simpler than complex data joins for nested content)
-        allGroups.selectAll(".bubble-content").remove();
-
-        allGroups.each(function (d) {
-            const group = d3.select<SVGGElement, CryptoCoin>(this);
-            const r = d.radius ?? 30;
-
-            const contentGroup = group.append("g").attr("class", "bubble-content");
-
-            // Logo/flags
+        
+        // Pre-load images for canvas
+        const imageCache = new Map<string, HTMLImageElement>();
+        bubbleData.forEach(d => {
             if (selectedCategory === 'forex-pair' && d.baseCountryCode && d.quoteCountryCode) {
-                const flagSize = Math.min(r * 0.5, 32);
-                const yPos = -r * 0.4;
-
-                const baseFlagGroup = contentGroup.append("g")
-                    .attr("transform", `translate(${-flagSize * 0.6}, ${yPos})`);
-                const clipIdBase = `clip-base-${d.id}`;
-                baseFlagGroup.append("defs").append("clipPath")
-                    .attr("id", clipIdBase)
-                    .append("circle")
-                    .attr("r", flagSize / 2);
-                baseFlagGroup.append("image")
-                    .attr("href", `https://flagcdn.com/w40/${d.baseCountryCode.toLowerCase()}.png`)
-                    .attr("width", flagSize)
-                    .attr("height", flagSize)
-                    .attr("x", -flagSize / 2)
-                    .attr("y", -flagSize / 2)
-                    .attr("clip-path", `url(#${clipIdBase})`)
-                    .style("pointer-events", "none");
-
-                const quoteFlagGroup = contentGroup.append("g")
-                    .attr("transform", `translate(${flagSize * 0.6}, ${yPos})`);
-                const clipIdQuote = `clip-quote-${d.id}`;
-                quoteFlagGroup.append("defs").append("clipPath")
-                    .attr("id", clipIdQuote)
-                    .append("circle")
-                    .attr("r", flagSize / 2);
-                quoteFlagGroup.append("image")
-                    .attr("href", `https://flagcdn.com/w40/${d.quoteCountryCode.toLowerCase()}.png`)
-                    .attr("width", flagSize)
-                    .attr("height", flagSize)
-                    .attr("x", -flagSize / 2)
-                    .attr("y", -flagSize / 2)
-                    .attr("clip-path", `url(#${clipIdQuote})`)
-                    .style("pointer-events", "none");
-            } else if (d.logoUrl) {
-                const imgSize = Math.min(r * 0.7, 52);
-                const clipId = `clip-${d.id}`;
-                contentGroup.append("defs").append("clipPath")
-                    .attr("id", clipId)
-                    .append("circle")
-                    .attr("r", imgSize / 2)
-                    .attr("cx", 0)
-                    .attr("cy", -r * 0.45);
-                contentGroup.append("image")
-                    .attr("href", d.logoUrl)
-                    .attr("width", imgSize)
-                    .attr("height", imgSize)
-                    .attr("x", -imgSize / 2)
-                    .attr("y", -(r * 0.45) - imgSize / 2)
-                    .attr("clip-path", `url(#${clipId})`)
-                    .style("pointer-events", "none");
+                const baseSrc = `https://flagcdn.com/w40/${d.baseCountryCode.toLowerCase()}.png`;
+                const quoteSrc = `https://flagcdn.com/w40/${d.quoteCountryCode.toLowerCase()}.png`;
+                if (!imageCache.has(baseSrc)) {
+                    const img = new window.Image();
+                    img.src = baseSrc;
+                    imageCache.set(baseSrc, img);
+                }
+                if (!imageCache.has(quoteSrc)) {
+                    const img = new window.Image();
+                    img.src = quoteSrc;
+                    imageCache.set(quoteSrc, img);
+                }
+            } else if (d.logoUrl && !imageCache.has(d.logoUrl)) {
+                const img = new window.Image();
+                img.src = d.logoUrl;
+                imageCache.set(d.logoUrl, img);
             }
-
-            // Symbol text
-            contentGroup.append("text")
-                .attr("class", "symbol-text")
-                .attr("text-anchor", "middle")
-                .attr("dy", selectedCategory === 'forex-pair' ? "-0.1em" : "0.2em")
-                .style("font-family", "Inter, -apple-system, BlinkMacSystemFont, sans-serif")
-                .style("font-weight", "900")
-                .style("font-size", `${Math.max(10, Math.min(r * 0.34, 28))}px`)
-                .style("fill", "#e5e7eb")
-                .style("pointer-events", "none")
-                .style("letter-spacing", "0.05em")
-                .text(() => {
-                    if (selectedCategory === 'forex-pair' && d.symbol.length >= 6) {
-                        const base = d.symbol.substring(0, 3);
-                        const quote = d.symbol.substring(3, 6);
-                        return `${base}/${quote}`;
-                    }
-                    return d.symbol;
-                });
-
-            // Rate text for forex
-            if (selectedCategory === 'forex' || selectedCategory === 'forex-pair') {
-                contentGroup.append("text")
-                    .attr("class", "rate-text")
-                    .attr("text-anchor", "middle")
-                    .attr("dy", selectedCategory === 'forex-pair' ? "0.9em" : "1.5em")
-                    .style("font-family", "JetBrains Mono, Monaco, Consolas, monospace")
-                    .style("font-weight", "700")
-                    .style("font-size", `${Math.max(8, Math.min(r * 0.16, 12))}px`)
-                    .style("fill", "#cbd5e1")
-                    .style("pointer-events", "none")
-                    .text(() => {
-                        if (d.currentRate) {
-                            if (d.currentRate < 1) return d.currentRate.toFixed(4);
-                            if (d.currentRate < 10) return d.currentRate.toFixed(3);
-                            if (d.currentRate < 100) return d.currentRate.toFixed(2);
-                            return d.currentRate.toFixed(1);
-                        }
-                        return "";
-                    });
-            }
-
-            // Change percentage text
-            contentGroup.append("text")
-                .attr("class", "change-text")
-                .attr("text-anchor", "middle")
-                .attr("dy", (selectedCategory === 'forex' || selectedCategory === 'forex-pair') ? "2em" : "1.4em")
-                .style("font-family", "Inter, -apple-system, BlinkMacSystemFont, sans-serif")
-                .style("font-weight", "800")
-                .style("font-size", `${Math.max(9, Math.min(r * 0.20, 16))}px`)
-                .style("fill", getMarketColor(getChangeForTimeframe(d, timeframe)))
-                .style("pointer-events", "none")
-                .text(() => {
-                    const change = getChangeForTimeframe(d, timeframe);
-                    return `${change > 0 ? "+" : ""}${change.toFixed(2)}%`;
-                });
         });
 
-        // ============================================
-        // DRAG BEHAVIOR
-        // ============================================
-
-        const drag = d3
-            .drag<SVGGElement, CryptoCoin>()
-            .on("start", function (event, d) {
-                if (!event.active) simulation.alphaTarget(0.3).restart();
-                d.fx = d.x;
-                d.fy = d.y;
-                const group = d3.select(this);
-                group.style("cursor", "grabbing");
-                group.transition()
-                    .duration(200)
-                    .ease(d3.easeCubicOut)
-                    .attr("transform", `translate(${d.x || 0}, ${d.y || 0}) scale(1.08)`);
-            })
-            .on("drag", function (event, d) {
-                d.fx = event.x;
-                d.fy = event.y;
-                d3.select(this).attr("transform", `translate(${event.x}, ${event.y}) scale(1.08)`);
-            })
-            .on("end", function (event, d) {
-                if (!event.active) simulation.alphaTarget(0.005); // Keep slightly active
-                d.fx = null;
-                d.fy = null;
-                const group = d3.select(this);
-                group.style("cursor", "grab");
-                group.transition()
-                    .duration(400)
-                    .ease(d3.easeCubicOut)
-                    .attr("transform", `translate(${d.x || 0}, ${d.y || 0}) scale(1)`);
-            });
-
-        allGroups.call(drag);
-
-        // ============================================
-        // HOVER EFFECTS - CryptoBubbles Style
-        // ============================================
-
-        allGroups
-            .on("mouseenter", function (_event, d) {
-                const group = d3.select(this);
-                const change = getChangeForTimeframe(d, timeframe);
-                const glowFilter = change > 0 ? "url(#neon-green-glow)" : change < 0 ? "url(#neon-red-glow)" : "url(#neon-neutral-glow)";
-
-                // Scale up entire bubble
-                group.transition()
-                    .duration(200)
-                    .ease(d3.easeCubicOut)
-                    .attr("transform", `translate(${d.x || 0}, ${d.y || 0}) scale(1.08)`);
-
-                // Enhance glow
-                group.select(".bubble-core")
-                    .transition().duration(200)
-                    .attr("stroke-width", 4)
-                    .style("filter", glowFilter);
-
-                group.select(".bubble-rim")
-                    .transition().duration(200)
-                    .style("opacity", 0.6)
-                    .attr("stroke-width", 4);
-
-                // Text glow
-                group.selectAll("text")
-                    .transition().duration(200)
-                    .style("filter", "drop-shadow(0 0 6px currentColor)");
-            })
-            .on("mouseleave", function (_event, d) {
-                const group = d3.select(this);
-                const change = getChangeForTimeframe(d, timeframe);
-                const glowFilter = change > 0 ? "url(#neon-green-glow)" : change < 0 ? "url(#neon-red-glow)" : "url(#neon-neutral-glow)";
-
-                // Scale back
-                group.transition()
-                    .duration(300)
-                    .ease(d3.easeCubicOut)
-                    .attr("transform", `translate(${d.x || 0}, ${d.y || 0}) scale(1)`);
-
-                group.select(".bubble-core")
-                    .transition().duration(300)
-                    .attr("stroke-width", 3)
-                    .style("filter", glowFilter);
-
-                group.select(".bubble-rim")
-                    .transition().duration(300)
-                    .style("opacity", 0.35)
-                    .attr("stroke-width", 3);
-
-                group.selectAll("text")
-                    .transition().duration(300)
-                    .style("filter", "none");
-            })
-            .on("click", function (_event, d) {
-                setSelectedBubble(d);
-                const group = d3.select(this);
-                const radius = d.radius ?? 30;
-                const change = getChangeForTimeframe(d, timeframe);
-                const strokeColor = getMarketColor(change);
-
-                // Ripple effect
-                const clickRipple = group.append("circle")
-                    .attr("r", radius)
-                    .attr("fill", "none")
-                    .attr("stroke", strokeColor)
-                    .attr("stroke-width", 4)
-                    .style("opacity", 0.8);
-
-                clickRipple
-                    .transition()
-                    .duration(600)
-                    .ease(d3.easeCubicOut)
-                    .attr("r", radius + 50)
-                    .style("opacity", 0)
-                    .style("stroke-width", 1)
-                    .remove();
-
-                // Pulse effect
-                group.transition()
-                    .duration(100)
-                    .attr("transform", `translate(${d.x || 0}, ${d.y || 0}) scale(1.12)`)
-                    .transition()
-                    .duration(200)
-                    .attr("transform", `translate(${d.x || 0}, ${d.y || 0}) scale(1.05)`);
-            });
-
-        // ============================================
-        // SIMULATION TICK - Smooth Transform Updates
-        // ============================================
+        const driftStart = Date.now();
 
         simulation.on("tick", () => {
-            allGroups.attr("transform", (d) => {
-                // Clamp positions to viewport
-                const r = d.radius ?? 30;
-                d.x = Math.max(r, Math.min(width - r, d.x ?? centerX));
-                d.y = Math.max(r, Math.min(height - r, d.y ?? centerY));
-                return `translate(${d.x}, ${d.y})`;
+            const elapsed = (Date.now() - driftStart) * 0.001;
+
+            // Clear canvas
+            ctx.clearRect(0, 0, width, height);
+
+            // Update positions and handle boundaries
+            bubbleData.forEach((n, i) => {
+                if (n.fx != null || n.fy != null) return; // Skip dragged nodes
+
+                // Organic sine-wave drift
+                const phaseX = i * 0.73 + (n.radius ?? 20) * 0.013;
+                const phaseY = i * 0.51 + (n.radius ?? 20) * 0.019;
+
+                const dx = (
+                    Math.sin(elapsed * 0.13 + phaseX) * 0.35 +
+                    Math.sin(elapsed * 0.07 + phaseX * 1.3) * 0.25 +
+                    Math.sin(elapsed * 0.21 + phaseX * 0.6) * 0.15
+                ) * 0.12;
+
+                const dy = (
+                    Math.cos(elapsed * 0.11 + phaseY) * 0.35 +
+                    Math.cos(elapsed * 0.05 + phaseY * 1.4) * 0.25 +
+                    Math.sin(elapsed * 0.17 + phaseY * 0.5) * 0.15
+                ) * 0.12;
+
+                const sizeScale = Math.max(0.4, 1 - ((n.radius ?? 20) / 200));
+                n.vx = (n.vx || 0) + dx * sizeScale;
+                n.vy = (n.vy || 0) + dy * sizeScale;
+
+                n.vx += (Math.random() - 0.5) * 0.08;
+                n.vy += (Math.random() - 0.5) * 0.08;
+
+                // Soft elastic boundary
+                const r = (n.radius || 20) + 1;
+                const x = n.x ?? width / 2;
+                const y = n.y ?? height / 2;
+
+                if (x < r) {
+                    n.vx = (n.vx || 0) + (r - x) * 0.15;
+                    if (n.vx < 0) n.vx *= 0.3;
+                } else if (x > width - r) {
+                    n.vx = (n.vx || 0) - (x - (width - r)) * 0.15;
+                    if (n.vx > 0) n.vx *= 0.3;
+                }
+                if (y < r) {
+                    n.vy = (n.vy || 0) + (r - y) * 0.15;
+                    if (n.vy < 0) n.vy *= 0.3;
+                } else if (y > height - r) {
+                    n.vy = (n.vy || 0) - (y - (height - r)) * 0.15;
+                    if (n.vy > 0) n.vy *= 0.3;
+                }
+
+                n.x = Math.max(r, Math.min(width - r, x));
+                n.y = Math.max(r, Math.min(height - r, y));
+            });
+
+            // Draw bubbles
+            // Sort so hovered node is drawn last (on top)
+            const hoveredNode = hoveredNodeRef.current;
+            const nodesToDraw = [...bubbleData].sort((a, b) => {
+                if (hoveredNode && a.id === hoveredNode.id) return 1;
+                if (hoveredNode && b.id === hoveredNode.id) return -1;
+                return 0;
+            });
+
+            nodesToDraw.forEach(d => {
+                const isHovered = hoveredNode && hoveredNode.id === d.id;
+                const r = (d.radius ?? 30) * (isHovered ? 1.08 : 1);
+                const x = d.x ?? 0;
+                const y = d.y ?? 0;
+                const change = getChangeForTimeframe(d, timeframe);
+                const color = getMarketColor(change);
+
+                ctx.save();
+                ctx.translate(x, y);
+
+                // Draw core circle with colored inner fill for 3D bubble depth
+                ctx.beginPath();
+                ctx.arc(0, 0, r, 0, 2 * Math.PI);
+                const innerGradient = ctx.createRadialGradient(-r * 0.25, -r * 0.3, r * 0.2, 0, 0, r);
+                innerGradient.addColorStop(0, `${color}66`);
+                innerGradient.addColorStop(0.68, `${color}22`);
+                innerGradient.addColorStop(1, "rgba(0, 0, 0, 0.55)");
+                ctx.fillStyle = innerGradient;
+                ctx.fill();
+
+                // Subtle highlight to fake spherical light reflection
+                ctx.beginPath();
+                ctx.arc(-r * 0.28, -r * 0.33, Math.max(4, r * 0.18), 0, 2 * Math.PI);
+                ctx.fillStyle = "rgba(255, 255, 255, 0.12)";
+                ctx.fill();
+
+                // Inset dark shading for stronger depth
+                const shadeGradient = ctx.createRadialGradient(r * 0.22, r * 0.26, r * 0.15, 0, 0, r);
+                shadeGradient.addColorStop(0, "rgba(0, 0, 0, 0)");
+                shadeGradient.addColorStop(1, "rgba(0, 0, 0, 0.45)");
+                ctx.beginPath();
+                ctx.arc(0, 0, r, 0, 2 * Math.PI);
+                ctx.fillStyle = shadeGradient;
+                ctx.fill();
+
+                // Draw glow and stroke
+                ctx.shadowBlur = isHovered ? 26 : 14;
+                ctx.shadowColor = color;
+                ctx.strokeStyle = color;
+                ctx.lineWidth = isHovered ? 5 : 4;
+                ctx.stroke();
+
+                // Draw rim
+                ctx.beginPath();
+                ctx.arc(0, 0, r + (isHovered ? 5 : 3), 0, 2 * Math.PI);
+                ctx.strokeStyle = `${color}${isHovered ? '99' : '55'}`;
+                ctx.lineWidth = isHovered ? 4 : 3;
+                ctx.shadowBlur = 0; // No shadow for rim
+                ctx.stroke();
+
+                // Draw content (images/text)
+                ctx.shadowBlur = isHovered ? 8 : 0;
+                ctx.shadowColor = "currentColor";
+
+                if (selectedCategory === 'forex-pair' && d.baseCountryCode && d.quoteCountryCode) {
+                    const flagSize = Math.min(r * 0.5, 32);
+                    const yPos = -r * 0.4;
+                    
+                    const baseSrc = `https://flagcdn.com/w40/${d.baseCountryCode.toLowerCase()}.png`;
+                    const quoteSrc = `https://flagcdn.com/w40/${d.quoteCountryCode.toLowerCase()}.png`;
+                    const baseImg = imageCache.get(baseSrc);
+                    const quoteImg = imageCache.get(quoteSrc);
+
+                    if (baseImg && baseImg.complete) {
+                        ctx.save();
+                        ctx.beginPath();
+                        ctx.arc(-flagSize * 0.6, yPos, flagSize / 2, 0, 2 * Math.PI);
+                        ctx.clip();
+                        ctx.drawImage(baseImg, -flagSize * 0.6 - flagSize / 2, yPos - flagSize / 2, flagSize, flagSize);
+                        ctx.restore();
+                    }
+                    if (quoteImg && quoteImg.complete) {
+                        ctx.save();
+                        ctx.beginPath();
+                        ctx.arc(flagSize * 0.6, yPos, flagSize / 2, 0, 2 * Math.PI);
+                        ctx.clip();
+                        ctx.drawImage(quoteImg, flagSize * 0.6 - flagSize / 2, yPos - flagSize / 2, flagSize, flagSize);
+                        ctx.restore();
+                    }
+                } else if (d.logoUrl) {
+                    const img = imageCache.get(d.logoUrl);
+                    if (img && img.complete) {
+                        const imgSize = Math.min(r * 0.7, 52);
+                        ctx.save();
+                        ctx.beginPath();
+                        ctx.arc(0, -r * 0.45, imgSize / 2, 0, 2 * Math.PI);
+                        ctx.clip();
+                        ctx.drawImage(img, -imgSize / 2, -r * 0.45 - imgSize / 2, imgSize, imgSize);
+                        ctx.restore();
+                    }
+                }
+
+                // Draw text
+                ctx.textAlign = "center";
+                ctx.textBaseline = "middle";
+
+                // Symbol
+                const symbolFontSize = Math.max(12, Math.min(r * 0.34, 30));
+                ctx.font = `900 ${symbolFontSize}px Inter, -apple-system, BlinkMacSystemFont, sans-serif`;
+                ctx.fillStyle = "#ffffff";
+                let symbolText = d.symbol;
+                if (selectedCategory === 'forex-pair' && d.symbol.length >= 6) {
+                    symbolText = `${d.symbol.substring(0, 3)}/${d.symbol.substring(3, 6)}`;
+                }
+                symbolText = symbolText.toUpperCase();
+                const symbolDy = selectedCategory === 'forex-pair' ? -r * 0.1 : r * 0.2;
+                ctx.fillText(symbolText, 0, symbolDy);
+
+                // Rate (for forex)
+                if (selectedCategory === 'forex' || selectedCategory === 'forex-pair') {
+                    const rateFontSize = Math.max(8, Math.min(r * 0.16, 12));
+                    ctx.font = `700 ${rateFontSize}px JetBrains Mono, Monaco, Consolas, monospace`;
+                    ctx.fillStyle = "#cbd5e1";
+                    let rateText = "";
+                    if (d.currentRate) {
+                        if (d.currentRate < 1) rateText = d.currentRate.toFixed(4);
+                        else if (d.currentRate < 10) rateText = d.currentRate.toFixed(3);
+                        else if (d.currentRate < 100) rateText = d.currentRate.toFixed(2);
+                        else rateText = d.currentRate.toFixed(1);
+                    }
+                    const rateDy = selectedCategory === 'forex-pair' ? r * 0.3 : r * 0.5;
+                    ctx.fillText(rateText, 0, rateDy);
+                }
+
+                // Change %
+                const changeFontSize = Math.max(10, Math.min(r * 0.20, 18));
+                ctx.font = `800 ${changeFontSize}px Inter, -apple-system, BlinkMacSystemFont, sans-serif`;
+                ctx.fillStyle = color;
+                const changeText = `${change > 0 ? "+" : ""}${change.toFixed(2)}%`;
+                const changeDy = (selectedCategory === 'forex' || selectedCategory === 'forex-pair') ? r * 0.7 : r * 0.6;
+                ctx.fillText(changeText, 0, changeDy);
+
+                ctx.restore();
             });
         });
 
-        // Keep simulation gently running for organic feel
-        const keepAliveInterval = setInterval(() => {
-            if (simulation.alpha() < 0.01) {
-                simulation.alpha(0.02).restart();
+        // ============================================
+        // INTERACTION HANDLING (Mouse/Touch)
+        // ============================================
+        
+        let dragSubject: CryptoCoin | null = null;
+
+        const drag = d3.drag<HTMLCanvasElement, unknown>()
+            .subject((event) => {
+                const [x, y] = d3.pointer(event, canvas);
+                return simulation.find(x, y, 50); // Find node within 50px
+            })
+            .on("start", (event) => {
+                if (!event.active) simulation.alphaTarget(0.3).restart();
+                dragSubject = event.subject as CryptoCoin;
+                dragSubject.fx = dragSubject.x;
+                dragSubject.fy = dragSubject.y;
+                canvas.style.cursor = "grabbing";
+            })
+            .on("drag", (event) => {
+                if (dragSubject) {
+                    dragSubject.fx = event.x;
+                    dragSubject.fy = event.y;
+                }
+            })
+            .on("end", (event) => {
+                if (!event.active) simulation.alphaTarget(0.005);
+                if (dragSubject) {
+                    dragSubject.fx = null;
+                    dragSubject.fy = null;
+                    dragSubject = null;
+                }
+                canvas.style.cursor = hoveredNodeRef.current ? "pointer" : "default";
+            });
+
+        d3.select(canvas).call(drag);
+
+        const handleMouseMove = (e: MouseEvent) => {
+            if (dragSubject) return; // Don't update hover while dragging
+            const rect = canvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+            
+            // Find node under mouse
+            const node = simulation.find(x, y);
+            if (node) {
+                const dx = x - (node.x ?? 0);
+                const dy = y - (node.y ?? 0);
+                const distance = Math.sqrt(dx * dx + dy * dy);
+                
+                if (distance <= (node.radius ?? 30)) {
+                    if (hoveredNodeRef.current?.id !== node.id) {
+                        hoveredNodeRef.current = node;
+                        canvas.style.cursor = "pointer";
+                    }
+                    return;
+                }
             }
-        }, 5000);
+            
+            if (hoveredNodeRef.current) {
+                hoveredNodeRef.current = null;
+                canvas.style.cursor = "default";
+            }
+        };
+
+        const handleClick = (e: MouseEvent) => {
+            if (hoveredNodeRef.current) {
+                setSelectedBubble(hoveredNodeRef.current);
+            }
+        };
+
+        canvas.addEventListener("mousemove", handleMouseMove);
+        canvas.addEventListener("click", handleClick);
+
+        // Keep simulation perpetually alive for continuous motion
+        const keepAliveInterval = setInterval(() => {
+            if (simulation.alpha() < 0.015) {
+                simulation.alpha(0.04).restart();
+            }
+        }, 2000);
 
         return () => {
             clearInterval(keepAliveInterval);
+            canvas.removeEventListener("mousemove", handleMouseMove);
+            canvas.removeEventListener("click", handleClick);
             if (simulation) simulation.stop();
             if (simulationRef.current) {
                 simulationRef.current.stop();
@@ -1559,7 +1389,7 @@ const CryptoBubblesUI: React.FC = () => {
                 />
             </div>
             {/* Bubble Canvas - fills remaining space below header */}
-            <div className="relative" style={{ height: `calc(100vh - ${HEADER_HEIGHT}px)` }}>
+            <div className="relative" style={{ height: `calc(100vh - ${HEADER_HEIGHT + FREE_BANNER_HEIGHT}px)` }}>
                 {/* Bubble Count Indicator */}
                 {!loading && !error && marketData.length > 0 && (
                     <div className="absolute top-4 right-4 z-10 bg-gray-800/80 backdrop-blur-sm rounded-lg px-3 py-1">
@@ -1636,12 +1466,12 @@ const CryptoBubblesUI: React.FC = () => {
                 )}
                 {!loading && !error && marketData.length > 0 && (
                     <>
-                        <svg
-                            ref={svgRef}
-                            width={dimensions.width}
-                            height={dimensions.height}
+                        <canvas
+                            ref={canvasRef}
                             className="absolute inset-0"
                             style={{
+                                width: `${dimensions.width}px`,
+                                height: `${dimensions.height}px`,
                                 background: `
                                     radial-gradient(circle at 20% 80%, rgba(120, 119, 198, 0.12) 0%, transparent 50%),
                                     radial-gradient(circle at 80% 20%, rgba(255, 119, 198, 0.12) 0%, transparent 50%),

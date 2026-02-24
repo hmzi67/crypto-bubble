@@ -2,11 +2,12 @@ import { useSession } from "next-auth/react";
 import { useEffect, useState } from "react";
 import { PlanType } from "@prisma/client";
 import { getEffectivePlanType, isSubscriptionActive } from "@/lib/subscription";
+import { SubscriptionData } from "@/types";
 
 export function useSubscription() {
   const { data: session } = useSession();
   const [isLoading, setIsLoading] = useState(true);
-  const [subscription, setSubscription] = useState<any>(null);
+  const [subscription, setSubscription] = useState<SubscriptionData | null>(null);
   const [effectivePlan, setEffectivePlan] = useState<PlanType>("FREE");
   const [isActive, setIsActive] = useState(false);
 
@@ -52,8 +53,8 @@ export function useSubscription() {
 
       setSubscription(data.subscription);
       return { success: true, message: data.message };
-    } catch (error: any) {
-      return { success: false, error: error.message };
+    } catch (error: unknown) {
+      return { success: false, error: error instanceof Error ? error.message : "Unknown error" };
     }
   };
 
@@ -73,8 +74,8 @@ export function useSubscription() {
 
       setSubscription(data.subscription);
       return { success: true, message: data.message };
-    } catch (error: any) {
-      return { success: false, error: error.message };
+    } catch (error: unknown) {
+      return { success: false, error: error instanceof Error ? error.message : "Unknown error" };
     }
   };
 

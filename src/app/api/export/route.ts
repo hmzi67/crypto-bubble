@@ -68,7 +68,7 @@ export async function POST(req: NextRequest) {
 /**
  * Convert array of objects to CSV format
  */
-function convertToCSV(data: any[]): string {
+function convertToCSV(data: Record<string, unknown>[]): string {
   if (data.length === 0) return "";
 
   const headers = Object.keys(data[0]);

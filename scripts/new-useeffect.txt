@@ -1,0 +1,443 @@
+    // Canvas Rendering with CryptoBubbles-style animations and physics
+    useEffect(() => {
+        if (!canvasRef.current) return;
+        if (loading || error || marketData.length === 0) return;
+        
+        const canvas = canvasRef.current;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) return;
+
+        const { width, height } = dimensions;
+        const centerX = width / 2;
+        const centerY = height / 2;
+
+        // Handle high DPI displays
+        const dpr = window.devicePixelRatio || 1;
+        canvas.width = width * dpr;
+        canvas.height = height * dpr;
+        ctx.scale(dpr, dpr);
+
+        // ============================================
+        // DYNAMIC BUBBLE SIZING FOR ALL BUBBLES
+        // ============================================
+        const sizeMetric = sizeBy === 'volume24h' ? 'volume24h' : 'marketCap';
+
+        // Use ALL market data - no filtering
+        const filteredMarketData = [...marketData]
+            .sort((a, b) => {
+                const aVal = (a[sizeMetric as keyof CryptoCoin] as number) ?? 0;
+                const bVal = (b[sizeMetric as keyof CryptoCoin] as number) ?? 0;
+                return bVal - aVal;
+            });
+
+        // ============================================
+        // DYNAMIC RADIUS CALCULATION - fills viewport like cryptobubbles.net
+        // ============================================
+        const maxValue = d3.max(filteredMarketData, (d) => d[sizeMetric as keyof CryptoCoin] as number) ?? 1;
+        const minValue = d3.min(filteredMarketData, (d) => d[sizeMetric as keyof CryptoCoin] as number) ?? 0;
+        const bubbleCount = filteredMarketData.length;
+
+        // Calculate dynamic radius range so bubbles cover ~65% of screen area
+        const screenArea = width * height;
+        // Adjust coverage based on bubble count to prevent overcrowding on high res
+        const targetCoverage = Math.min(0.65, 0.4 + (bubbleCount / 500)); 
+        const avgBubbleArea = (screenArea * targetCoverage) / bubbleCount;
+        const avgRadius = Math.sqrt(avgBubbleArea / Math.PI);
+        
+        // Compress the size difference: max bubble is only ~4x the min bubble
+        const dynamicMin = Math.max(16, avgRadius * 0.5);
+        const dynamicMax = Math.min(Math.min(width, height) * 0.15, dynamicMin * 4);
+
+        // Use a power scale with a low exponent to heavily compress the differences
+        const radiusScale = d3.scalePow()
+            .exponent(0.15)
+            .domain([minValue || 1, maxValue])
+            .range([dynamicMin, dynamicMax]);
+
+        // ============================================
+        // PREPARE BUBBLE DATA WITH POSITION PERSISTENCE
+        // ============================================
+        const prevData = prevBubbleDataRef.current;
+        const isInitialRender = prevData.size === 0;
+
+        // Sort by size (largest first) for better packing
+        const sortedMarketData = [...filteredMarketData].sort((a, b) => {
+            const aVal = (a[sizeMetric as keyof CryptoCoin] as number) ?? 0;
+            const bVal = (b[sizeMetric as keyof CryptoCoin] as number) ?? 0;
+            return bVal - aVal;
+        });
+
+        const bubbleData: CryptoCoin[] = sortedMarketData.map((d, index) => {
+            const metricValue = (d[sizeMetric as keyof CryptoCoin] as number) ?? 0;
+            const newRadius = radiusScale(metricValue);
+            const prevBubble = prevData.get(d.id);
+
+            // Preserve position from previous render, or generate new position
+            let x: number, y: number;
+            if (prevBubble) {
+                x = prevBubble.x ?? centerX;
+                y = prevBubble.y ?? centerY;
+            } else {
+                // Spawn randomly across the entire rectangular viewport
+                const padding = newRadius + 10;
+                x = padding + Math.random() * (width - padding * 2);
+                y = padding + Math.random() * (height - padding * 2);
+            }
+
+            return {
+                ...d,
+                radius: newRadius,
+                x,
+                y,
+                vx: prevBubble?.vx ?? 0,
+                vy: prevBubble?.vy ?? 0,
+                fx: null,
+                fy: null,
+            };
+        });
+
+        // Update ref for next render
+        const newDataMap = new Map<string, CryptoCoin>();
+        bubbleData.forEach(d => newDataMap.set(d.id, d));
+        prevBubbleDataRef.current = newDataMap;
+
+        // ============================================
+        // D3 FORCE SIMULATION - CryptoBubbles Style
+        // ============================================
+
+        // Stop previous simulation
+        if (simulationRef.current) {
+            simulationRef.current.stop();
+        }
+
+        const simulation = d3
+            .forceSimulation<CryptoCoin>(bubbleData)
+            // Extremely weak centering just to prevent them from getting stuck in corners
+            .force("x", d3.forceX<CryptoCoin>(width / 2).strength(0.001))
+            .force("y", d3.forceY<CryptoCoin>(height / 2).strength(0.001))
+            // Gentle repulsion to spread them out across the screen
+            .force("charge", d3.forceManyBody<CryptoCoin>().strength((d) => -(d.radius ?? 20) * 0.8))
+            // Tight collision: bubbles touch but don't overlap
+            .force("collision", d3.forceCollide<CryptoCoin>()
+                .radius((d) => (d.radius ?? 20) + 2)
+                .strength(1.0)
+                .iterations(5)
+            )
+            .alphaDecay(0.005)
+            .velocityDecay(0.2);
+
+        // On initial render, warm-up with enough ticks to spread; on refresh, re-heat gently
+        if (isInitialRender) {
+            simulation.alpha(1.0);
+            for (let i = 0; i < 300; i++) {
+                simulation.tick();
+            }
+        } else {
+            simulation.alpha(0.3).restart();
+        }
+
+        simulationRef.current = simulation;
+
+        // ============================================
+        // CANVAS RENDERING LOOP
+        // ============================================
+        
+        // Pre-load images for canvas
+        const imageCache = new Map<string, HTMLImageElement>();
+        bubbleData.forEach(d => {
+            if (selectedCategory === 'forex-pair' && d.baseCountryCode && d.quoteCountryCode) {
+                const baseSrc = `https://flagcdn.com/w40/${d.baseCountryCode.toLowerCase()}.png`;
+                const quoteSrc = `https://flagcdn.com/w40/${d.quoteCountryCode.toLowerCase()}.png`;
+                if (!imageCache.has(baseSrc)) {
+                    const img = new Image();
+                    img.src = baseSrc;
+                    imageCache.set(baseSrc, img);
+                }
+                if (!imageCache.has(quoteSrc)) {
+                    const img = new Image();
+                    img.src = quoteSrc;
+                    imageCache.set(quoteSrc, img);
+                }
+            } else if (d.logoUrl && !imageCache.has(d.logoUrl)) {
+                const img = new Image();
+                img.src = d.logoUrl;
+                imageCache.set(d.logoUrl, img);
+            }
+        });
+
+        const driftStart = Date.now();
+
+        simulation.on("tick", () => {
+            const elapsed = (Date.now() - driftStart) * 0.001;
+
+            // Clear canvas
+            ctx.clearRect(0, 0, width, height);
+
+            // Update positions and handle boundaries
+            bubbleData.forEach((n, i) => {
+                if (n.fx != null || n.fy != null) return; // Skip dragged nodes
+
+                // Organic sine-wave drift
+                const phaseX = i * 0.73 + (n.radius ?? 20) * 0.013;
+                const phaseY = i * 0.51 + (n.radius ?? 20) * 0.019;
+
+                const dx = (
+                    Math.sin(elapsed * 0.13 + phaseX) * 0.35 +
+                    Math.sin(elapsed * 0.07 + phaseX * 1.3) * 0.25 +
+                    Math.sin(elapsed * 0.21 + phaseX * 0.6) * 0.15
+                ) * 0.12;
+
+                const dy = (
+                    Math.cos(elapsed * 0.11 + phaseY) * 0.35 +
+                    Math.cos(elapsed * 0.05 + phaseY * 1.4) * 0.25 +
+                    Math.sin(elapsed * 0.17 + phaseY * 0.5) * 0.15
+                ) * 0.12;
+
+                const sizeScale = Math.max(0.4, 1 - ((n.radius ?? 20) / 200));
+                n.vx = (n.vx || 0) + dx * sizeScale;
+                n.vy = (n.vy || 0) + dy * sizeScale;
+
+                n.vx += (Math.random() - 0.5) * 0.08;
+                n.vy += (Math.random() - 0.5) * 0.08;
+
+                // Soft elastic boundary
+                const r = (n.radius || 20) + 3;
+                const x = n.x ?? width / 2;
+                const y = n.y ?? height / 2;
+
+                if (x < r) {
+                    n.vx = (n.vx || 0) + (r - x) * 0.15;
+                    if (n.vx < 0) n.vx *= 0.3;
+                } else if (x > width - r) {
+                    n.vx = (n.vx || 0) - (x - (width - r)) * 0.15;
+                    if (n.vx > 0) n.vx *= 0.3;
+                }
+                if (y < r) {
+                    n.vy = (n.vy || 0) + (r - y) * 0.15;
+                    if (n.vy < 0) n.vy *= 0.3;
+                } else if (y > height - r) {
+                    n.vy = (n.vy || 0) - (y - (height - r)) * 0.15;
+                    if (n.vy > 0) n.vy *= 0.3;
+                }
+
+                n.x = Math.max(r, Math.min(width - r, n.x));
+                n.y = Math.max(r, Math.min(height - r, n.y));
+            });
+
+            // Draw bubbles
+            // Sort so hovered node is drawn last (on top)
+            const hoveredNode = hoveredNodeRef.current;
+            const nodesToDraw = [...bubbleData].sort((a, b) => {
+                if (hoveredNode && a.id === hoveredNode.id) return 1;
+                if (hoveredNode && b.id === hoveredNode.id) return -1;
+                return 0;
+            });
+
+            nodesToDraw.forEach(d => {
+                const isHovered = hoveredNode && hoveredNode.id === d.id;
+                const r = (d.radius ?? 30) * (isHovered ? 1.08 : 1);
+                const x = d.x ?? 0;
+                const y = d.y ?? 0;
+                const change = getChangeForTimeframe(d, timeframe);
+                const color = getMarketColor(change);
+
+                ctx.save();
+                ctx.translate(x, y);
+
+                // Draw core circle
+                ctx.beginPath();
+                ctx.arc(0, 0, r, 0, 2 * Math.PI);
+                ctx.fillStyle = "rgba(0, 0, 0, 0.15)";
+                ctx.fill();
+
+                // Draw glow and stroke
+                ctx.shadowBlur = isHovered ? 25 : 15;
+                ctx.shadowColor = color;
+                ctx.strokeStyle = color;
+                ctx.lineWidth = isHovered ? 4 : 3;
+                ctx.stroke();
+
+                // Draw rim
+                ctx.beginPath();
+                ctx.arc(0, 0, r + (isHovered ? 6 : 4), 0, 2 * Math.PI);
+                ctx.strokeStyle = `${color}${isHovered ? '99' : '55'}`;
+                ctx.lineWidth = isHovered ? 4 : 3;
+                ctx.shadowBlur = 0; // No shadow for rim
+                ctx.stroke();
+
+                // Draw content (images/text)
+                ctx.shadowBlur = isHovered ? 8 : 0;
+                ctx.shadowColor = "currentColor";
+
+                if (selectedCategory === 'forex-pair' && d.baseCountryCode && d.quoteCountryCode) {
+                    const flagSize = Math.min(r * 0.5, 32);
+                    const yPos = -r * 0.4;
+                    
+                    const baseSrc = `https://flagcdn.com/w40/${d.baseCountryCode.toLowerCase()}.png`;
+                    const quoteSrc = `https://flagcdn.com/w40/${d.quoteCountryCode.toLowerCase()}.png`;
+                    const baseImg = imageCache.get(baseSrc);
+                    const quoteImg = imageCache.get(quoteSrc);
+
+                    if (baseImg && baseImg.complete) {
+                        ctx.save();
+                        ctx.beginPath();
+                        ctx.arc(-flagSize * 0.6, yPos, flagSize / 2, 0, 2 * Math.PI);
+                        ctx.clip();
+                        ctx.drawImage(baseImg, -flagSize * 0.6 - flagSize / 2, yPos - flagSize / 2, flagSize, flagSize);
+                        ctx.restore();
+                    }
+                    if (quoteImg && quoteImg.complete) {
+                        ctx.save();
+                        ctx.beginPath();
+                        ctx.arc(flagSize * 0.6, yPos, flagSize / 2, 0, 2 * Math.PI);
+                        ctx.clip();
+                        ctx.drawImage(quoteImg, flagSize * 0.6 - flagSize / 2, yPos - flagSize / 2, flagSize, flagSize);
+                        ctx.restore();
+                    }
+                } else if (d.logoUrl) {
+                    const img = imageCache.get(d.logoUrl);
+                    if (img && img.complete) {
+                        const imgSize = Math.min(r * 0.7, 52);
+                        ctx.save();
+                        ctx.beginPath();
+                        ctx.arc(0, -r * 0.45, imgSize / 2, 0, 2 * Math.PI);
+                        ctx.clip();
+                        ctx.drawImage(img, -imgSize / 2, -r * 0.45 - imgSize / 2, imgSize, imgSize);
+                        ctx.restore();
+                    }
+                }
+
+                // Draw text
+                ctx.textAlign = "center";
+                ctx.textBaseline = "middle";
+
+                // Symbol
+                const symbolFontSize = Math.max(10, Math.min(r * 0.34, 28));
+                ctx.font = `900 ${symbolFontSize}px Inter, -apple-system, BlinkMacSystemFont, sans-serif`;
+                ctx.fillStyle = "#e5e7eb";
+                let symbolText = d.symbol;
+                if (selectedCategory === 'forex-pair' && d.symbol.length >= 6) {
+                    symbolText = `${d.symbol.substring(0, 3)}/${d.symbol.substring(3, 6)}`;
+                }
+                const symbolDy = selectedCategory === 'forex-pair' ? -r * 0.1 : r * 0.2;
+                ctx.fillText(symbolText, 0, symbolDy);
+
+                // Rate (for forex)
+                if (selectedCategory === 'forex' || selectedCategory === 'forex-pair') {
+                    const rateFontSize = Math.max(8, Math.min(r * 0.16, 12));
+                    ctx.font = `700 ${rateFontSize}px JetBrains Mono, Monaco, Consolas, monospace`;
+                    ctx.fillStyle = "#cbd5e1";
+                    let rateText = "";
+                    if (d.currentRate) {
+                        if (d.currentRate < 1) rateText = d.currentRate.toFixed(4);
+                        else if (d.currentRate < 10) rateText = d.currentRate.toFixed(3);
+                        else if (d.currentRate < 100) rateText = d.currentRate.toFixed(2);
+                        else rateText = d.currentRate.toFixed(1);
+                    }
+                    const rateDy = selectedCategory === 'forex-pair' ? r * 0.3 : r * 0.5;
+                    ctx.fillText(rateText, 0, rateDy);
+                }
+
+                // Change %
+                const changeFontSize = Math.max(9, Math.min(r * 0.20, 16));
+                ctx.font = `800 ${changeFontSize}px Inter, -apple-system, BlinkMacSystemFont, sans-serif`;
+                ctx.fillStyle = color;
+                const changeText = `${change > 0 ? "+" : ""}${change.toFixed(2)}%`;
+                const changeDy = (selectedCategory === 'forex' || selectedCategory === 'forex-pair') ? r * 0.7 : r * 0.6;
+                ctx.fillText(changeText, 0, changeDy);
+
+                ctx.restore();
+            });
+        });
+
+        // ============================================
+        // INTERACTION HANDLING (Mouse/Touch)
+        // ============================================
+        
+        let dragSubject: CryptoCoin | null = null;
+
+        const drag = d3.drag<HTMLCanvasElement, unknown>()
+            .subject((event) => {
+                const [x, y] = d3.pointer(event, canvas);
+                return simulation.find(x, y, 50); // Find node within 50px
+            })
+            .on("start", (event) => {
+                if (!event.active) simulation.alphaTarget(0.3).restart();
+                dragSubject = event.subject as CryptoCoin;
+                dragSubject.fx = dragSubject.x;
+                dragSubject.fy = dragSubject.y;
+                canvas.style.cursor = "grabbing";
+            })
+            .on("drag", (event) => {
+                if (dragSubject) {
+                    dragSubject.fx = event.x;
+                    dragSubject.fy = event.y;
+                }
+            })
+            .on("end", (event) => {
+                if (!event.active) simulation.alphaTarget(0.005);
+                if (dragSubject) {
+                    dragSubject.fx = null;
+                    dragSubject.fy = null;
+                    dragSubject = null;
+                }
+                canvas.style.cursor = hoveredNodeRef.current ? "pointer" : "default";
+            });
+
+        d3.select(canvas).call(drag);
+
+        const handleMouseMove = (e: MouseEvent) => {
+            if (dragSubject) return; // Don't update hover while dragging
+            const rect = canvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+            
+            // Find node under mouse
+            const node = simulation.find(x, y);
+            if (node) {
+                const dx = x - (node.x ?? 0);
+                const dy = y - (node.y ?? 0);
+                const distance = Math.sqrt(dx * dx + dy * dy);
+                
+                if (distance <= (node.radius ?? 30)) {
+                    if (hoveredNodeRef.current?.id !== node.id) {
+                        hoveredNodeRef.current = node;
+                        canvas.style.cursor = "pointer";
+                    }
+                    return;
+                }
+            }
+            
+            if (hoveredNodeRef.current) {
+                hoveredNodeRef.current = null;
+                canvas.style.cursor = "default";
+            }
+        };
+
+        const handleClick = (e: MouseEvent) => {
+            if (hoveredNodeRef.current) {
+                setSelectedBubble(hoveredNodeRef.current);
+            }
+        };
+
+        canvas.addEventListener("mousemove", handleMouseMove);
+        canvas.addEventListener("click", handleClick);
+
+        // Keep simulation perpetually alive for continuous motion
+        const keepAliveInterval = setInterval(() => {
+            if (simulation.alpha() < 0.015) {
+                simulation.alpha(0.04).restart();
+            }
+        }, 2000);
+
+        return () => {
+            clearInterval(keepAliveInterval);
+            canvas.removeEventListener("mousemove", handleMouseMove);
+            canvas.removeEventListener("click", handleClick);
+            if (simulation) simulation.stop();
+            if (simulationRef.current) {
+                simulationRef.current.stop();
+                simulationRef.current = null;
+            }
+        };
+    }, [marketData, dimensions, loading, error, selectedCategory, timeframe, sizeBy, scaleMode]);
