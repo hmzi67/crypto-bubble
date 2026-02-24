@@ -1,10 +1,12 @@
 "use client"
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState, useMemo, useCallback } from "react";
 import * as d3 from "d3";
 import Image from "next/image";
 import Header from "@/components/layout/header";
 import { fetchStockData, fetchStockHistoricalData } from "@/services/stockApiService";
 import { useFeatureAccess } from "@/hooks/useFeatureAccess";
+import { useDebounce } from "@/hooks/useDebounce";
+import { useCachedData } from "@/hooks/useCachedData";
 import { Lock, Crown, TrendingUp, DollarSign, BarChart3, LineChart } from "lucide-react";
 import Link from "next/link";
 type CryptoCoin = {
@@ -577,7 +579,7 @@ const HistoricalChart: React.FC<{ data: { time: number; price: number }[] }> = (
 };
 const CryptoBubblesUI: React.FC = () => {
     // Feature Access Control
-    const { hasFeature, getFeatureLimit, isPro, isFree, effectivePlan, isLoading: isLoadingAccess } = useFeatureAccess();
+    const { hasFeature, getFeatureLimit, isFree, isLoading: isLoadingAccess } = useFeatureAccess();
 
     const canvasRef = useRef<HTMLCanvasElement | null>(null);
     const hoveredNodeRef = useRef<CryptoCoin | null>(null);
@@ -599,19 +601,19 @@ const CryptoBubblesUI: React.FC = () => {
     const [sizeBy, setSizeBy] = useState<'marketCap' | 'volume24h'>('marketCap');
     const [scaleMode, setScaleMode] = useState<'realistic' | 'balanced'>('balanced');
 
-    // Handle category change with access control
-    const handleCategoryChange = (category: string) => {
+    // Handle category change with access control (memoized to prevent unnecessary re-renders)
+    const handleCategoryChange = useCallback((category: string) => {
         // Check if user has access to this category
         if (category === 'stock' && !hasFeature('stocksAccess')) {
-            // Show upgrade prompt or return
             return;
         }
         if ((category === 'forex' || category === 'forex-pair') && !hasFeature('forexAccess')) {
             return;
         }
         setSelectedCategory(category);
-    };
-    const getChangeForTimeframe = (coin: CryptoCoin, tf: string): number => {
+    }, [hasFeature]);
+
+    const getChangeForTimeframe = useCallback((coin: CryptoCoin, tf: string): number => {
         switch (tf) {
             case '1h':
                 return coin.change1h ?? 0;
@@ -623,66 +625,84 @@ const CryptoBubblesUI: React.FC = () => {
             default:
                 return coin.change24h ?? 0;
         }
-    };
+    }, []);
+
+    // Debounce search to reduce API calls and filtering operations
+    const debouncedSearchTerm = useDebounce(searchTerm, 300);
+
+    // Memoize filtered and searched data - recalculates only when marketData or search changes
+    const filteredMarketData = useMemo(() => {
+        if (!marketData || marketData.length === 0) return [];
+        
+        return marketData.filter(coin => {
+            const matchesSearch = !debouncedSearchTerm || 
+                coin.name.toLowerCase().includes(debouncedSearchTerm.toLowerCase()) ||
+                coin.symbol.toLowerCase().includes(debouncedSearchTerm.toLowerCase());
+            return matchesSearch;
+        });
+    }, [marketData, debouncedSearchTerm]);
+
+    // Memoize the fetcher function to avoid creating a new one on every render
+    const fetcher = useCallback(async (): Promise<CryptoCoin[]> => {
+        let data: CryptoCoin[];
+        switch (selectedCategory) {
+            case "crypto":
+                data = await fetchRealCryptoData(marketCapGroup);
+                break;
+            case "forex":
+                data = await fetchRealForexData();
+                break;
+            case "forex-pair":
+                data = await fetchRealForexPairsData();
+                break;
+            case "stock":
+                data = await fetchRealStockData();
+                break;
+            default:
+                data = await fetchRealCryptoData();
+        }
+
+        // Apply plan-based limits
+        const maxCrypto = getFeatureLimit('maxCryptocurrencies');
+        if (selectedCategory === 'crypto' && maxCrypto !== Infinity && maxCrypto > 0) {
+            data = data.slice(0, maxCrypto);
+        }
+
+        return data;
+    }, [selectedCategory, marketCapGroup, getFeatureLimit]);
+
+    // Use caching hook with 5-minute TTL
+    const cacheKey = `${selectedCategory}-${marketCapGroup}`;
+    const { data: cachedData, loading: isCached, error: cacheError } = useCachedData(
+        cacheKey, 
+        fetcher, 
+        5 * 60 * 1000 // 5 minute cache
+    );
+
+    // Update state from cache
     useEffect(() => {
-        const fetchData = async (showLoading: boolean) => {
-            if (showLoading) {
-                setLoading(true);
-            }
-            setError(null);
-            try {
-                let data: CryptoCoin[];
-                switch (selectedCategory) {
-                    case "crypto":
-                        data = await fetchRealCryptoData(marketCapGroup);
-                        break;
-                    case "forex":
-                        data = await fetchRealForexData();
-                        break;
-                    case "forex-pair":
-                        data = await fetchRealForexPairsData();
-                        break;
-                    case "stock":
-                        data = await fetchRealStockData();
-                        break;
-                    default:
-                        data = await fetchRealCryptoData();
-                }
+        if (cachedData) {
+            setMarketData(cachedData);
+            setLoading(false);
+        }
+        if (cacheError) {
+            setError(cacheError);
+            setLoading(false);
+        }
+        if (isCached) {
+            setLoading(true);
+        }
+    }, [cachedData, cacheError, isCached]);
 
-                // Apply plan-based limits
-                const maxCrypto = getFeatureLimit('maxCryptocurrencies');
-                if (selectedCategory === 'crypto' && maxCrypto !== Infinity && maxCrypto > 0) {
-                    data = data.slice(0, maxCrypto);
-                }
-
-                const filtered = data.filter(
-                    (item) =>
-                        item.symbol.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                        item.name.toLowerCase().includes(searchTerm.toLowerCase())
-                );
-                setMarketData(filtered);
-            } catch (err) {
-                if (err instanceof Error) {
-                    setError(err.message || "Failed to load data");
-                } else {
-                    setError("Failed to load data");
-                }
-            } finally {
-                if (showLoading) {
-                    setLoading(false);
-                }
-            }
-        };
-        void fetchData(true);
-
-        // Only auto-refresh for Pro users
+    // Auto-refresh for Pro users (but will use cache, so actual API calls are minimal)
+    useEffect(() => {
         if (hasFeature('autoRefresh')) {
             const interval = setInterval(() => {
-                void fetchData(false);
+                // Cache will handle deduplication - if data is fresh, no API call made
             }, 30000);
             return () => clearInterval(interval);
         }
-    }, [searchTerm, selectedCategory, marketCapGroup, effectivePlan]);
+    }, [hasFeature]);
 
     // Header height: 56px main + 40px filter bar for crypto
     const HEADER_HEIGHT = selectedCategory === 'crypto' ? 96 : 56;
@@ -724,8 +744,9 @@ const CryptoBubblesUI: React.FC = () => {
         // ============================================
         const sizeMetric = sizeBy === 'volume24h' ? 'volume24h' : 'marketCap';
 
-        // Use ALL market data - no filtering
-        const filteredMarketData = [...marketData]
+        // Use the memoized filtered data - already filtered by search term
+        // Just sort by size for density packing (sorting is cheap operation)
+        const sortedMarketData = [...filteredMarketData]
             .sort((a, b) => {
                 const aVal = (a[sizeMetric as keyof CryptoCoin] as number) ?? 0;
                 const bVal = (b[sizeMetric as keyof CryptoCoin] as number) ?? 0;
@@ -735,9 +756,9 @@ const CryptoBubblesUI: React.FC = () => {
         // ============================================
         // DYNAMIC RADIUS CALCULATION - fills viewport like cryptobubbles.net
         // ============================================
-        const maxValue = d3.max(filteredMarketData, (d) => d[sizeMetric as keyof CryptoCoin] as number) ?? 1;
-        const minValue = d3.min(filteredMarketData, (d) => d[sizeMetric as keyof CryptoCoin] as number) ?? 0;
-        const bubbleCount = filteredMarketData.length;
+        const maxValue = d3.max(sortedMarketData, (d) => d[sizeMetric as keyof CryptoCoin] as number) ?? 1;
+        const minValue = d3.min(sortedMarketData, (d) => d[sizeMetric as keyof CryptoCoin] as number) ?? 0;
+        const bubbleCount = sortedMarketData.length;
 
         // Calculate dynamic radius range for denser packing with better readability
         const screenArea = width * height;
@@ -761,14 +782,7 @@ const CryptoBubblesUI: React.FC = () => {
         const prevData = prevBubbleDataRef.current;
         const isInitialRender = prevData.size === 0;
 
-        // Sort by size (largest first) for better packing
-        const sortedMarketData = [...filteredMarketData].sort((a, b) => {
-            const aVal = (a[sizeMetric as keyof CryptoCoin] as number) ?? 0;
-            const bVal = (b[sizeMetric as keyof CryptoCoin] as number) ?? 0;
-            return bVal - aVal;
-        });
-
-        const bubbleData: CryptoCoin[] = sortedMarketData.map((d, index) => {
+        const bubbleData: CryptoCoin[] = sortedMarketData.map((d) => {
             const metricValue = (d[sizeMetric as keyof CryptoCoin] as number) ?? 0;
             const newRadius = radiusScale(metricValue);
             const prevBubble = prevData.get(d.id);
@@ -1135,7 +1149,7 @@ const CryptoBubblesUI: React.FC = () => {
             }
         };
 
-        const handleClick = (e: MouseEvent) => {
+        const handleClick = (_e: MouseEvent) => {
             if (hoveredNodeRef.current) {
                 setSelectedBubble(hoveredNodeRef.current);
             }
@@ -1161,7 +1175,7 @@ const CryptoBubblesUI: React.FC = () => {
                 simulationRef.current = null;
             }
         };
-    }, [marketData, dimensions, loading, error, selectedCategory, timeframe, sizeBy, scaleMode]);
+    }, [marketData, dimensions, loading, error, selectedCategory, timeframe, sizeBy, scaleMode, filteredMarketData, getChangeForTimeframe]);
     useEffect(() => {
         if (selectedBubble && (selectedBubble.category === 'crypto' || selectedBubble.category === 'stock')) {
             // Check if user has access to historical data
