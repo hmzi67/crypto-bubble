@@ -633,9 +633,9 @@ const CryptoBubblesUI: React.FC = () => {
     // Memoize filtered and searched data - recalculates only when marketData or search changes
     const filteredMarketData = useMemo(() => {
         if (!marketData || marketData.length === 0) return [];
-        
+
         return marketData.filter(coin => {
-            const matchesSearch = !debouncedSearchTerm || 
+            const matchesSearch = !debouncedSearchTerm ||
                 coin.name.toLowerCase().includes(debouncedSearchTerm.toLowerCase()) ||
                 coin.symbol.toLowerCase().includes(debouncedSearchTerm.toLowerCase());
             return matchesSearch;
@@ -674,8 +674,8 @@ const CryptoBubblesUI: React.FC = () => {
     // Use caching hook with 5-minute TTL
     const cacheKey = `${selectedCategory}-${marketCapGroup}`;
     const { data: cachedData, loading: isCached, error: cacheError } = useCachedData(
-        cacheKey, 
-        fetcher, 
+        cacheKey,
+        fetcher,
         5 * 60 * 1000 // 5 minute cache
     );
 
@@ -724,7 +724,7 @@ const CryptoBubblesUI: React.FC = () => {
     useEffect(() => {
         if (!canvasRef.current) return;
         if (loading || error || marketData.length === 0) return;
-        
+
         const canvas = canvasRef.current;
         const ctx = canvas.getContext("2d");
         if (!ctx) return;
@@ -765,14 +765,13 @@ const CryptoBubblesUI: React.FC = () => {
         const targetCoverage = Math.min(0.62, 0.38 + (bubbleCount / 550));
         const avgBubbleArea = (screenArea * targetCoverage) / bubbleCount;
         const avgRadius = Math.sqrt(avgBubbleArea / Math.PI);
-        
-        // Keep bubble size hierarchy visible while avoiding tiny circles
-        const dynamicMin = Math.max(16, avgRadius * 0.5);
-        const dynamicMax = Math.min(Math.min(width, height) * 0.18, dynamicMin * 4.2);
 
-        // Use a power scale with a low exponent to heavily compress the differences
-        const radiusScale = d3.scalePow()
-            .exponent(0.15)
+        // Keep bubble size hierarchy visible while avoiding tiny circles
+        const dynamicMin = Math.max(12, avgRadius * 0.3);
+        const dynamicMax = Math.min(Math.min(width, height) * 0.35, dynamicMin * 15);
+
+        // Use a square root scale to accurately represent area proportional to data value
+        const radiusScale = d3.scaleSqrt()
             .domain([minValue || 1, maxValue])
             .range([dynamicMin, dynamicMax]);
 
@@ -856,7 +855,7 @@ const CryptoBubblesUI: React.FC = () => {
         // ============================================
         // CANVAS RENDERING LOOP
         // ============================================
-        
+
         // Pre-load images for canvas
         const imageCache = new Map<string, HTMLImageElement>();
         bubbleData.forEach(d => {
@@ -1006,7 +1005,7 @@ const CryptoBubblesUI: React.FC = () => {
                 if (selectedCategory === 'forex-pair' && d.baseCountryCode && d.quoteCountryCode) {
                     const flagSize = Math.min(r * 0.5, 32);
                     const yPos = -r * 0.4;
-                    
+
                     const baseSrc = `https://flagcdn.com/w40/${d.baseCountryCode.toLowerCase()}.png`;
                     const quoteSrc = `https://flagcdn.com/w40/${d.quoteCountryCode.toLowerCase()}.png`;
                     const baseImg = imageCache.get(baseSrc);
@@ -1088,7 +1087,7 @@ const CryptoBubblesUI: React.FC = () => {
         // ============================================
         // INTERACTION HANDLING (Mouse/Touch)
         // ============================================
-        
+
         let dragSubject: CryptoCoin | null = null;
 
         const drag = d3.drag<HTMLCanvasElement, unknown>()
@@ -1126,14 +1125,14 @@ const CryptoBubblesUI: React.FC = () => {
             const rect = canvas.getBoundingClientRect();
             const x = e.clientX - rect.left;
             const y = e.clientY - rect.top;
-            
+
             // Find node under mouse
             const node = simulation.find(x, y);
             if (node) {
                 const dx = x - (node.x ?? 0);
                 const dy = y - (node.y ?? 0);
                 const distance = Math.sqrt(dx * dx + dy * dy);
-                
+
                 if (distance <= (node.radius ?? 30)) {
                     if (hoveredNodeRef.current?.id !== node.id) {
                         hoveredNodeRef.current = node;
@@ -1142,7 +1141,7 @@ const CryptoBubblesUI: React.FC = () => {
                     return;
                 }
             }
-            
+
             if (hoveredNodeRef.current) {
                 hoveredNodeRef.current = null;
                 canvas.style.cursor = "default";
