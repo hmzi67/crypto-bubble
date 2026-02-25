@@ -165,7 +165,7 @@ export default function ForgotPasswordPage() {
               <Button
                 type="button"
                 variant="outline"
-                className="w-full border-gray-700/50 hover:bg-gray-800/50 text-gray-300 font-medium py-6 rounded-lg transition-all"
+                className="w-full bg-gray-700/50 hover:text-white border-gray-700/50 hover:bg-gray-800/50 text-white font-medium py-6 rounded-lg transition-all"
               >
                 <ArrowLeft className="w-4 h-4 mr-2" />
                 Back to Login

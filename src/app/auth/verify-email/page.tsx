@@ -5,7 +5,7 @@ import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { AlertCircle, CheckCircle, TrendingUp, Loader2 } from "lucide-react";
+import { AlertCircle, CheckCircle, TrendingUp, Loader2, ArrowLeft } from "lucide-react";
 
 function VerifyEmailForm() {
   // const router = useRouter();
@@ -163,11 +163,13 @@ function VerifyEmailForm() {
                   Sign Up Again
                 </Button>
               </Link>
-              <Link href="/auth/login" className="block">
+              <Link href="/auth/login" className="w-full">
                 <Button
+                  type="button"
                   variant="outline"
-                  className="w-full border-gray-700/50 hover:bg-gray-800/50 text-gray-300 font-medium py-6 rounded-lg transition-all"
+                  className="w-full bg-gray-700/50 hover:text-white border-gray-700/50 hover:bg-gray-800/50 text-white font-medium py-6 rounded-lg transition-all"
                 >
+                  <ArrowLeft className="w-4 h-4 mr-2" />
                   Back to Login
                 </Button>
               </Link>
