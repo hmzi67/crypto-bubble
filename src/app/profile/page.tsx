@@ -180,7 +180,7 @@ export default function ProfilePage() {
 
             <div className="relative z-10">
                 <Header
-                    title="PROFILE"
+                    title="Crypto Forex Bubbles"
                     showCategories={false}
                     showSearch={false}
                     showControls={false}
