@@ -1007,8 +1007,8 @@ const CryptoBubblesUI: React.FC = () => {
 
                 if (selectedCategory === 'forex-pair' && d.baseCountryCode && d.quoteCountryCode) {
                     const flagSize = isSmallBubble
-                        ? Math.min(r * 0.55, 20)
-                        : Math.min(r * 0.5, 32);
+                        ? r * 0.55
+                        : r * 0.42;
                     const yPos = isSmallBubble ? 0 : -r * 0.4;
 
                     const baseSrc = `https://flagcdn.com/w40/${d.baseCountryCode.toLowerCase()}.png`;
@@ -1036,8 +1036,8 @@ const CryptoBubblesUI: React.FC = () => {
                     const img = imageCache.get(d.logoUrl);
                     if (img && img.complete) {
                         const imgSize = isSmallBubble
-                            ? Math.min(r * 1.1, r * 0.9)
-                            : Math.min(r * 0.7, 52);
+                            ? r * 0.9
+                            : r * 0.55;
                         const imgYOffset = isSmallBubble ? 0 : -r * 0.45;
                         ctx.save();
                         ctx.beginPath();
