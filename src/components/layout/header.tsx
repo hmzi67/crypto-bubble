@@ -105,7 +105,7 @@ const Header: React.FC<HeaderProps> = ({
     };
 
     // Compact select styling
-    const selectClassName = "bg-gray-800/80 border border-gray-700/50 rounded-md px-2 py-1 text-xs text-white focus:outline-none focus:ring-1 focus:ring-blue-500 transition-all appearance-none cursor-pointer";
+    const selectClassName = "bg-gray-800/80 border border-gray-700/50 rounded-md px-2 py-1 text-[15px] text-white focus:outline-none focus:ring-1 focus:ring-blue-500 transition-all appearance-none cursor-pointer";
     const selectStyle = {
         backgroundImage: `url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e")`,
         backgroundPosition: 'right 0.25rem center',
@@ -125,11 +125,11 @@ const Header: React.FC<HeaderProps> = ({
                     <div className="flex items-center gap-2">
                         <div className="relative flex-shrink-0">
                             <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 via-purple-500 to-green-500 flex items-center justify-center shadow">
-                                <span className="text-white font-black text-xs">CF</span>
+                                <span className="text-white font-black text-[15px]">CF</span>
                             </div>
                             <div className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
                         </div>
-                        <h1 className="text-base font-bold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent whitespace-nowrap hidden lg:block">
+                        <h1 className="text-[24px] bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent whitespace-nowrap hidden lg:block">
                             {title}
                         </h1>
                     </div>
@@ -141,7 +141,7 @@ const Header: React.FC<HeaderProps> = ({
                                 <button
                                     key={category.id}
                                     onClick={() => onCategoryChange?.(category.id)}
-                                    className={`flex items-center gap-1 px-2.5 py-1.5 rounded-md text-xs font-semibold transition-all duration-150 ${selectedCategory === category.id
+                                    className={`flex items-center gap-1 px-2.5 py-1.5 rounded-md text-[15px] font-semibold transition-all duration-150 ${selectedCategory === category.id
                                         ? "bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow"
                                         : "text-gray-400 hover:text-white hover:bg-gray-700/50"
                                         }`}
@@ -165,7 +165,7 @@ const Header: React.FC<HeaderProps> = ({
                                 placeholder={searchPlaceholder}
                                 value={searchTerm}
                                 onChange={handleSearchChange}
-                                className="bg-gray-800/70 text-white text-xs pl-7 pr-3 py-1.5 rounded-md border border-gray-700/50 focus:border-blue-500/50 focus:outline-none w-36 lg:w-48 transition-all"
+                                className="bg-gray-800/70 text-white text-[15px] pl-7 pr-3 py-1.5 rounded-md border border-gray-700/50 focus:border-blue-500/50 focus:outline-none w-36 lg:w-48 transition-all"
                             />
                         </div>
                     )}
@@ -182,7 +182,7 @@ const Header: React.FC<HeaderProps> = ({
                                 <div className="w-6 h-6 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center">
                                     <User className="w-3 h-3 text-white" />
                                 </div>
-                                <span className="text-gray-300 text-xs font-medium max-w-[60px] truncate hidden sm:inline">
+                                <span className="text-gray-300 text-[15px] font-medium max-w-[60px] truncate hidden sm:inline">
                                     {session.user?.name || session.user?.email?.split('@')[0]}
                                 </span>
                                 {subscription?.isActive && subscription?.effectivePlan !== "FREE" && (
@@ -204,13 +204,13 @@ const Header: React.FC<HeaderProps> = ({
                                     ></div>
                                     <div className="absolute right-0 mt-1 w-48 bg-gray-800 border border-gray-700/50 rounded-lg shadow-xl z-30 overflow-hidden">
                                         <div className="p-2 border-b border-gray-700/50">
-                                            <p className="text-xs text-gray-400">Signed in as</p>
-                                            <p className="text-xs font-medium text-white truncate">{session.user?.email}</p>
+                                            <p className="text-[15px] text-gray-400">Signed in as</p>
+                                            <p className="text-[15px] font-medium text-white truncate">{session.user?.email}</p>
                                         </div>
                                         <Link href="/profile">
                                             <button
                                                 onClick={() => setShowUserMenu(false)}
-                                                className="w-full flex items-center gap-2 px-3 py-2 text-left text-gray-300 hover:bg-gray-700/50 transition-colors text-xs"
+                                                className="w-full flex items-center gap-2 px-3 py-2 text-left text-gray-300 hover:bg-gray-700/50 transition-colors text-[15px]"
                                             >
                                                 <User className="w-3.5 h-3.5" />
                                                 Profile
@@ -219,7 +219,7 @@ const Header: React.FC<HeaderProps> = ({
                                         <Link href="/pricing">
                                             <button
                                                 onClick={() => setShowUserMenu(false)}
-                                                className="w-full flex items-center gap-2 px-3 py-2 text-left text-gray-300 hover:bg-gray-700/50 transition-colors text-xs"
+                                                className="w-full flex items-center gap-2 px-3 py-2 text-left text-gray-300 hover:bg-gray-700/50 transition-colors text-[15px]"
                                             >
                                                 <TrendingUp className="w-3.5 h-3.5" />
                                                 Pricing
@@ -230,7 +230,7 @@ const Header: React.FC<HeaderProps> = ({
                                                 setShowUserMenu(false);
                                                 signOut({ callbackUrl: '/auth/login' });
                                             }}
-                                            className="w-full flex items-center gap-2 px-3 py-2 text-left text-gray-300 hover:bg-gray-700/50 transition-colors text-xs"
+                                            className="w-full flex items-center gap-2 px-3 py-2 text-left text-gray-300 hover:bg-gray-700/50 transition-colors text-[15px]"
                                         >
                                             <LogOut className="w-3.5 h-3.5" />
                                             Sign Out
@@ -242,18 +242,18 @@ const Header: React.FC<HeaderProps> = ({
                     ) : (
                         <div className="flex items-center gap-1">
                             <Link href="/pricing">
-                                <button className="flex items-center gap-1 px-2 py-1.5 rounded-md text-gray-300 hover:text-white hover:bg-gray-800/50 transition-all text-xs font-medium">
+                                <button className="flex items-center gap-1 px-2 py-1.5 rounded-md text-gray-300 hover:text-white hover:bg-gray-800/50 transition-all text-[15px] font-medium">
                                     <span>Pricing</span>
                                 </button>
                             </Link>
                             <Link href="/auth/login">
-                                <button className="flex items-center gap-1 px-2 py-1.5 rounded-md text-gray-300 hover:text-white hover:bg-gray-800/50 transition-all text-xs font-medium">
+                                <button className="flex items-center gap-1 px-2 py-1.5 rounded-md text-gray-300 hover:text-white hover:bg-gray-800/50 transition-all text-[15px] font-medium">
                                     <LogIn className="w-3.5 h-3.5" />
                                     <span className="hidden sm:inline">Login</span>
                                 </button>
                             </Link>
                             <Link href="/auth/signup">
-                                <button className="px-3 py-1.5 rounded-md bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white text-xs font-semibold transition-all shadow">
+                                <button className="px-3 py-1.5 rounded-md bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white text-[15px] font-semibold transition-all shadow">
                                     Sign Up
                                 </button>
                             </Link>
@@ -266,7 +266,7 @@ const Header: React.FC<HeaderProps> = ({
             {showControls && selectedCategory === 'crypto' && (
                 <div className="flex items-center justify-center gap-4 px-3 h-10 bg-gray-800/40 border-t border-gray-700/30">
                     {/* Market Status */}
-                    <div className="flex items-center gap-1.5 text-xs text-gray-400">
+                    <div className="flex items-center gap-1.5 text-[15px] text-gray-400">
                         <span className="flex items-center gap-1 text-green-400 font-medium">
                             <div className="w-1.5 h-1.5 bg-green-400 rounded-full animate-pulse"></div>
                             Live
@@ -277,7 +277,7 @@ const Header: React.FC<HeaderProps> = ({
 
                     {/* Timeframe */}
                     <div className="flex items-center gap-1.5">
-                        <label className="text-xs text-gray-500">Timeframe:</label>
+                        <label className="text-[15px] text-gray-500">Timeframe:</label>
                         <select
                             value={timeframe}
                             onChange={(e) => onTimeframeChange?.(e.target.value)}
@@ -295,7 +295,7 @@ const Header: React.FC<HeaderProps> = ({
 
                     {/* Market Cap Group */}
                     <div className="flex items-center gap-1.5">
-                        <label className="text-xs text-gray-500">Market Cap:</label>
+                        <label className="text-[15px] text-gray-500">Market Cap:</label>
                         <select
                             value={marketCapGroup}
                             onChange={(e) => onMarketCapGroupChange?.(Number(e.target.value))}
@@ -314,7 +314,7 @@ const Header: React.FC<HeaderProps> = ({
 
                     {/* Size By */}
                     <div className="flex items-center gap-1.5">
-                        <label className="text-xs text-gray-500">Size by:</label>
+                        <label className="text-[15px] text-gray-500">Size by:</label>
                         <select
                             value={sizeBy}
                             onChange={(e) => onSizeByChange?.(e.target.value as 'marketCap' | 'volume24h')}
@@ -330,7 +330,7 @@ const Header: React.FC<HeaderProps> = ({
 
                     {/* Scale Mode */}
                     <div className="flex items-center gap-1.5">
-                        <label className="text-xs text-gray-500">Scale:</label>
+                        <label className="text-[15px] text-gray-500">Scale:</label>
                         <select
                             value={scaleMode}
                             onChange={(e) => onScaleModeChange?.(e.target.value as 'realistic' | 'balanced')}
@@ -346,7 +346,7 @@ const Header: React.FC<HeaderProps> = ({
                     <div className="w-px h-5 bg-gray-700/50" />
 
                     {/* Updated Time */}
-                    <div className="flex items-center gap-1.5 text-xs">
+                    <div className="flex items-center gap-1.5 text-[15px]">
                         <span className="text-gray-500">Updated:</span>
                         <span className="text-white font-medium tabular-nums">
                             {mounted ? time : '--:--:--'}
