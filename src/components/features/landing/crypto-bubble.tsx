@@ -1002,9 +1002,14 @@ const CryptoBubblesUI: React.FC = () => {
                 ctx.shadowBlur = isHovered ? 8 : 0;
                 ctx.shadowColor = "currentColor";
 
+                // Threshold below which only the icon is shown (no text)
+                const isSmallBubble = r < 30;
+
                 if (selectedCategory === 'forex-pair' && d.baseCountryCode && d.quoteCountryCode) {
-                    const flagSize = Math.min(r * 0.5, 32);
-                    const yPos = -r * 0.4;
+                    const flagSize = isSmallBubble
+                        ? Math.min(r * 0.55, 20)
+                        : Math.min(r * 0.5, 32);
+                    const yPos = isSmallBubble ? 0 : -r * 0.4;
 
                     const baseSrc = `https://flagcdn.com/w40/${d.baseCountryCode.toLowerCase()}.png`;
                     const quoteSrc = `https://flagcdn.com/w40/${d.quoteCountryCode.toLowerCase()}.png`;
@@ -1030,55 +1035,61 @@ const CryptoBubblesUI: React.FC = () => {
                 } else if (d.logoUrl) {
                     const img = imageCache.get(d.logoUrl);
                     if (img && img.complete) {
-                        const imgSize = Math.min(r * 0.7, 52);
+                        const imgSize = isSmallBubble
+                            ? Math.min(r * 1.1, r * 0.9)
+                            : Math.min(r * 0.7, 52);
+                        const imgYOffset = isSmallBubble ? 0 : -r * 0.45;
                         ctx.save();
                         ctx.beginPath();
-                        ctx.arc(0, -r * 0.45, imgSize / 2, 0, 2 * Math.PI);
+                        ctx.arc(0, imgYOffset, imgSize / 2, 0, 2 * Math.PI);
                         ctx.clip();
-                        ctx.drawImage(img, -imgSize / 2, -r * 0.45 - imgSize / 2, imgSize, imgSize);
+                        ctx.drawImage(img, -imgSize / 2, imgYOffset - imgSize / 2, imgSize, imgSize);
                         ctx.restore();
                     }
                 }
 
-                // Draw text
-                ctx.textAlign = "center";
-                ctx.textBaseline = "middle";
+                // Only draw text labels when the bubble is large enough
+                if (!isSmallBubble) {
+                    // Draw text
+                    ctx.textAlign = "center";
+                    ctx.textBaseline = "middle";
 
-                // Symbol
-                const symbolFontSize = Math.max(12, Math.min(r * 0.34, 30));
-                ctx.font = `900 ${symbolFontSize}px Inter, -apple-system, BlinkMacSystemFont, sans-serif`;
-                ctx.fillStyle = "#ffffff";
-                let symbolText = d.symbol;
-                if (selectedCategory === 'forex-pair' && d.symbol.length >= 6) {
-                    symbolText = `${d.symbol.substring(0, 3)}/${d.symbol.substring(3, 6)}`;
-                }
-                symbolText = symbolText.toUpperCase();
-                const symbolDy = selectedCategory === 'forex-pair' ? -r * 0.1 : r * 0.2;
-                ctx.fillText(symbolText, 0, symbolDy);
-
-                // Rate (for forex)
-                if (selectedCategory === 'forex' || selectedCategory === 'forex-pair') {
-                    const rateFontSize = Math.max(8, Math.min(r * 0.16, 12));
-                    ctx.font = `700 ${rateFontSize}px JetBrains Mono, Monaco, Consolas, monospace`;
-                    ctx.fillStyle = "#cbd5e1";
-                    let rateText = "";
-                    if (d.currentRate) {
-                        if (d.currentRate < 1) rateText = d.currentRate.toFixed(4);
-                        else if (d.currentRate < 10) rateText = d.currentRate.toFixed(3);
-                        else if (d.currentRate < 100) rateText = d.currentRate.toFixed(2);
-                        else rateText = d.currentRate.toFixed(1);
+                    // Symbol
+                    const symbolFontSize = Math.max(12, Math.min(r * 0.34, 30));
+                    ctx.font = `900 ${symbolFontSize}px Inter, -apple-system, BlinkMacSystemFont, sans-serif`;
+                    ctx.fillStyle = "#ffffff";
+                    let symbolText = d.symbol;
+                    if (selectedCategory === 'forex-pair' && d.symbol.length >= 6) {
+                        symbolText = `${d.symbol.substring(0, 3)}/${d.symbol.substring(3, 6)}`;
                     }
-                    const rateDy = selectedCategory === 'forex-pair' ? r * 0.3 : r * 0.5;
-                    ctx.fillText(rateText, 0, rateDy);
-                }
+                    symbolText = symbolText.toUpperCase();
+                    const symbolDy = selectedCategory === 'forex-pair' ? -r * 0.1 : r * 0.2;
+                    ctx.fillText(symbolText, 0, symbolDy);
 
-                // Change %
-                const changeFontSize = Math.max(10, Math.min(r * 0.20, 18));
-                ctx.font = `800 ${changeFontSize}px Inter, -apple-system, BlinkMacSystemFont, sans-serif`;
-                ctx.fillStyle = color;
-                const changeText = `${change > 0 ? "+" : ""}${change.toFixed(2)}%`;
-                const changeDy = (selectedCategory === 'forex' || selectedCategory === 'forex-pair') ? r * 0.7 : r * 0.6;
-                ctx.fillText(changeText, 0, changeDy);
+                    // Rate (for forex)
+                    if (selectedCategory === 'forex' || selectedCategory === 'forex-pair') {
+                        const rateFontSize = Math.max(8, Math.min(r * 0.16, 12));
+                        ctx.font = `700 ${rateFontSize}px JetBrains Mono, Monaco, Consolas, monospace`;
+                        ctx.fillStyle = "#cbd5e1";
+                        let rateText = "";
+                        if (d.currentRate) {
+                            if (d.currentRate < 1) rateText = d.currentRate.toFixed(4);
+                            else if (d.currentRate < 10) rateText = d.currentRate.toFixed(3);
+                            else if (d.currentRate < 100) rateText = d.currentRate.toFixed(2);
+                            else rateText = d.currentRate.toFixed(1);
+                        }
+                        const rateDy = selectedCategory === 'forex-pair' ? r * 0.3 : r * 0.5;
+                        ctx.fillText(rateText, 0, rateDy);
+                    }
+
+                    // Change %
+                    const changeFontSize = Math.max(10, Math.min(r * 0.20, 18));
+                    ctx.font = `800 ${changeFontSize}px Inter, -apple-system, BlinkMacSystemFont, sans-serif`;
+                    ctx.fillStyle = color;
+                    const changeText = `${change > 0 ? "+" : ""}${change.toFixed(2)}%`;
+                    const changeDy = (selectedCategory === 'forex' || selectedCategory === 'forex-pair') ? r * 0.7 : r * 0.6;
+                    ctx.fillText(changeText, 0, changeDy);
+                }
 
                 ctx.restore();
             });
