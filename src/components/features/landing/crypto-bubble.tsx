@@ -1056,7 +1056,7 @@ const CryptoBubblesUI: React.FC = () => {
 
                     // Symbol
                     const symbolFontSize = Math.max(12, Math.min(r * 0.34, 30));
-                    ctx.font = `900 ${symbolFontSize}px Inter, -apple-system, BlinkMacSystemFont, sans-serif`;
+                    ctx.font = `900 ${symbolFontSize}px Arial, sans-serif`;
                     ctx.fillStyle = "#ffffff";
                     let symbolText = d.symbol;
                     if (selectedCategory === 'forex-pair' && d.symbol.length >= 6) {
@@ -1069,7 +1069,7 @@ const CryptoBubblesUI: React.FC = () => {
                     // Rate (for forex)
                     if (selectedCategory === 'forex' || selectedCategory === 'forex-pair') {
                         const rateFontSize = Math.max(8, Math.min(r * 0.16, 12));
-                        ctx.font = `700 ${rateFontSize}px JetBrains Mono, Monaco, Consolas, monospace`;
+                        ctx.font = `700 ${rateFontSize}px Arial, sans-serif`;
                         ctx.fillStyle = "#cbd5e1";
                         let rateText = "";
                         if (d.currentRate) {
@@ -1084,7 +1084,7 @@ const CryptoBubblesUI: React.FC = () => {
 
                     // Change %
                     const changeFontSize = Math.max(10, Math.min(r * 0.20, 18));
-                    ctx.font = `800 ${changeFontSize}px Inter, -apple-system, BlinkMacSystemFont, sans-serif`;
+                    ctx.font = `800 ${changeFontSize}px Arial, sans-serif`;
                     ctx.fillStyle = color;
                     const changeText = `${change > 0 ? "+" : ""}${change.toFixed(2)}%`;
                     const changeDy = (selectedCategory === 'forex' || selectedCategory === 'forex-pair') ? r * 0.7 : r * 0.6;
